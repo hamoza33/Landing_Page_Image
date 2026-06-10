@@ -8,6 +8,7 @@ not kill the whole job and any section can be regenerated later.
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 from pathlib import Path
@@ -89,42 +90,49 @@ class Pipeline:
         if persist:
             await persist(job)
 
-        # Render each section. Failures are recorded on the section but
-        # don't break the loop — the user can hit "regenerate" later.
+        # Render each section in parallel (bounded by IMAGE_CONCURRENCY).
+        # Failures are recorded on the section but don't break the others —
+        # the user can hit "regenerate" later.
         await _step("generating 8 section images")
         # Use a shared seed per job for visual continuity across regenerations.
         seed = self.image_gen.fresh_seed()
+        sem = asyncio.Semaphore(max(1, self.settings.image_concurrency))
         prompts: dict[str, str] = {}
         any_error = False
-        for sec in job.sections:
-            try:
-                sec.status = "running"
-                if persist:
-                    await persist(job)
-                prompt, png = await self.image_gen.render_section(
-                    key=sec.key,
-                    index=sec.index,
-                    brief=brief,
-                    copy=copy,
-                    seed=seed,
-                    product_image=image_bytes,
-                )
-                fname = SECTION_FILENAMES.get(sec.key, f"section_{sec.index + 1}_{sec.key}.png")
-                path = job_dir / fname
-                path.write_bytes(png)
-                sec.prompt = prompt
-                sec.image_path = str(path)
-                sec.status = "done"
-                sec.error = None
-                prompts[sec.key] = prompt
-            except Exception as exc:  # noqa: BLE001 — record & continue
-                log.exception("[job=%s] section %s failed", job.id, sec.key)
-                sec.status = "error"
-                sec.error = f"{type(exc).__name__}: {exc}"
-                any_error = True
-            finally:
-                if persist:
-                    await persist(job)
+
+        async def _render_one(sec: JobSection) -> None:
+            nonlocal any_error
+            async with sem:
+                try:
+                    sec.status = "running"
+                    if persist:
+                        await persist(job)
+                    prompt, png = await self.image_gen.render_section(
+                        key=sec.key,
+                        index=sec.index,
+                        brief=brief,
+                        copy=copy,
+                        seed=seed,
+                        product_image=image_bytes,
+                    )
+                    fname = SECTION_FILENAMES.get(sec.key, f"section_{sec.index + 1}_{sec.key}.png")
+                    path = job_dir / fname
+                    path.write_bytes(png)
+                    sec.prompt = prompt
+                    sec.image_path = str(path)
+                    sec.status = "done"
+                    sec.error = None
+                    prompts[sec.key] = prompt
+                except Exception as exc:  # noqa: BLE001
+                    log.exception("[job=%s] section %s failed", job.id, sec.key)
+                    sec.status = "error"
+                    sec.error = f"{type(exc).__name__}: {exc}"
+                    any_error = True
+                finally:
+                    if persist:
+                        await persist(job)
+
+        await asyncio.gather(*[_render_one(s) for s in job.sections])
 
         # Stash prompts even if some sections failed (handy for debugging).
         if prompts:
