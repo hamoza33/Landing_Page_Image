@@ -16,6 +16,13 @@ from app.services.yunwu_client import (
 )
 
 
+def test_extract_response_text_chat_completions_preferred():
+    payload = {
+        "choices": [{"message": {"role": "assistant", "content": "compat"}}]
+    }
+    assert _extract_response_text(payload) == "compat"
+
+
 def test_extract_response_text_output_text_shortcut():
     payload = {"output_text": "hello"}
     assert _extract_response_text(payload) == "hello"
@@ -31,9 +38,21 @@ def test_extract_response_text_nested_output():
     assert _extract_response_text(payload) == "first second"
 
 
-def test_extract_response_text_chat_completions_fallback():
-    payload = {"choices": [{"message": {"content": "compat"}}]}
-    assert _extract_response_text(payload) == "compat"
+def test_extract_response_text_chat_content_parts():
+    payload = {
+        "choices": [
+            {
+                "message": {
+                    "role": "assistant",
+                    "content": [
+                        {"type": "text", "text": "alpha "},
+                        {"type": "text", "text": "beta"},
+                    ],
+                }
+            }
+        ]
+    }
+    assert _extract_response_text(payload) == "alpha beta"
 
 
 def test_extract_response_text_raises_on_unknown_shape():
@@ -42,7 +61,7 @@ def test_extract_response_text_raises_on_unknown_shape():
 
 
 @pytest.mark.asyncio
-async def test_respond_posts_to_responses_endpoint(monkeypatch):
+async def test_respond_posts_to_chat_completions(monkeypatch):
     captured = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
@@ -52,9 +71,7 @@ async def test_respond_posts_to_responses_endpoint(monkeypatch):
         return httpx.Response(
             200,
             json={
-                "output": [
-                    {"content": [{"type": "output_text", "text": "ok"}]}
-                ]
+                "choices": [{"message": {"role": "assistant", "content": "ok"}}]
             },
         )
 
@@ -72,12 +89,73 @@ async def test_respond_posts_to_responses_endpoint(monkeypatch):
     client = YunwuClient()
     out = await client.respond(instructions="sys", user_content="hello")
     assert out == "ok"
-    assert captured["url"].endswith("/openai-response/v1/responses")
+    assert captured["url"].endswith("/v1/chat/completions")
     body = captured["body"]
     assert body["model"]  # default chat model
-    assert body["input"][0]["role"] == "system"
-    assert body["input"][1]["role"] == "user"
+    assert body["messages"][0]["role"] == "system"
+    assert body["messages"][0]["content"] == "sys"
+    assert body["messages"][1]["role"] == "user"
+    assert body["messages"][1]["content"] == "hello"
     assert captured["auth"].startswith("Bearer ")
+
+
+@pytest.mark.asyncio
+async def test_respond_passes_response_format_and_temperature(monkeypatch):
+    captured = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["body"] = json.loads(request.content)
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": "{}"}}]},
+        )
+
+    transport = httpx.MockTransport(handler)
+    real_async = httpx.AsyncClient
+
+    def fake_async(*args, **kwargs):
+        kwargs["transport"] = transport
+        return real_async(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", fake_async)
+
+    client = YunwuClient()
+    await client.respond(
+        instructions="x",
+        user_content=[{"type": "text", "text": "y"}],
+        response_format={"type": "json_object"},
+        temperature=0.4,
+    )
+    assert captured["body"]["response_format"] == {"type": "json_object"}
+    assert captured["body"]["temperature"] == 0.4
+    assert captured["body"]["messages"][1]["content"] == [
+        {"type": "text", "text": "y"}
+    ]
+
+
+@pytest.mark.asyncio
+async def test_post_rejects_html_response(monkeypatch):
+    """Yunwu sometimes returns its marketing HTML for unknown paths; we must error."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            text="<!DOCTYPE html><html>marketing</html>",
+            headers={"content-type": "text/html; charset=utf-8"},
+        )
+
+    transport = httpx.MockTransport(handler)
+    real_async = httpx.AsyncClient
+
+    def fake_async(*args, **kwargs):
+        kwargs["transport"] = transport
+        return real_async(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", fake_async)
+
+    client = YunwuClient()
+    with pytest.raises(YunwuError):
+        await client.respond(instructions="x", user_content="y")
 
 
 @pytest.mark.asyncio

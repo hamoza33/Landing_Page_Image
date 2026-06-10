@@ -67,9 +67,10 @@ class ProductAnalyzer:
     async def _yunwu_vision(self, image_bytes: bytes, *, mime: str) -> ProductBrief:
         b64 = base64.b64encode(image_bytes).decode("ascii")
         data_url = f"data:{mime};base64,{b64}"
+        # Chat-completions vision content parts.
         user_content = [
-            {"type": "input_text", "text": "Analyze this product image."},
-            {"type": "input_image", "image_url": data_url},
+            {"type": "text", "text": "Analyze this product image."},
+            {"type": "image_url", "image_url": {"url": data_url}},
         ]
         text = await self.client.respond(
             instructions=ANALYZER_INSTRUCTIONS,

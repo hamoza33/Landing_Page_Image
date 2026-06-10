@@ -1,4 +1,4 @@
-"""Arabic copy generator — one Yunwu Responses-API call for all 8 sections."""
+"""Arabic copy generator — one Yunwu chat-completions call for all 8 sections."""
 
 from __future__ import annotations
 

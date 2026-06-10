@@ -2,15 +2,20 @@
 
 Two endpoints are wrapped:
 
-* ``POST {BASE}/openai-response/v1/responses`` — Responses API shape, used
+* ``POST {BASE}/v1/chat/completions`` — OpenAI chat-completions shape, used
   for both vision (image input) and pure-text generations. We parse
-  ``output[0].content[0].text`` (also accepting ``output_text`` if present).
+  ``choices[0].message.content``.
 * ``POST {BASE}/v1/images/generations`` — image generation. We accept either
   a base64 ``b64_json`` payload or a remote ``url`` and normalize to bytes.
 
 The image-edit endpoint (``gpt-image-2-all``) is exposed through
 ``image_edit`` for the hero / lifestyle scenes that use the user's actual
 product photo as a visual anchor.
+
+NOTE: Yunwu also exposes ``/openai-response/v1/responses`` but on at least
+some accounts that path returns the marketing landing page (HTML, not JSON).
+We deliberately avoid it and stick to ``/v1/chat/completions`` which is
+universally available.
 """
 
 from __future__ import annotations
@@ -70,10 +75,18 @@ class YunwuClient:
                     raise YunwuError(
                         f"Yunwu {resp.status_code} at {url}: {resp.text[:500]}"
                     )
+                ctype = resp.headers.get("content-type", "")
+                if "json" not in ctype.lower():
+                    raise YunwuError(
+                        f"Yunwu returned non-JSON content-type {ctype!r} at {url}: "
+                        f"{resp.text[:300]}"
+                    )
                 try:
                     return resp.json()
                 except ValueError as exc:
-                    raise YunwuError(f"Non-JSON response from Yunwu: {exc}") from exc
+                    raise YunwuError(
+                        f"Non-JSON body from Yunwu at {url}: {exc}: {resp.text[:300]}"
+                    ) from exc
         raise YunwuError("Retry loop exited without response")  # pragma: no cover
 
     # --------------------------------------------------------- responses (chat)
@@ -87,26 +100,28 @@ class YunwuClient:
         response_format: dict[str, Any] | None = None,
         temperature: float | None = None,
     ) -> str:
-        """Call the Responses API and return the assistant's text output.
+        """Call ``/v1/chat/completions`` and return the assistant's text.
 
-        ``user_content`` can be a plain string or a Responses-API content list
-        (e.g. ``[{"type": "input_text", ...}, {"type": "input_image", ...}]``).
+        ``user_content`` may be a plain string or a chat-completions content
+        list (e.g. ``[{"type":"text","text":...}, {"type":"image_url",
+        "image_url":{"url":"data:..."}}]``).
         """
 
-        url = f"{self.settings.yunwu_base_url}/openai-response/v1/responses"
+        url = f"{self.settings.yunwu_base_url}/v1/chat/completions"
         if isinstance(user_content, str):
-            user_content = [{"type": "input_text", "text": user_content}]
+            user_message: dict[str, Any] = {"role": "user", "content": user_content}
+        else:
+            user_message = {"role": "user", "content": user_content}
 
         payload: dict[str, Any] = {
             "model": model or self.settings.chat_model,
-            "input": [
-                {"role": "system", "content": [{"type": "input_text", "text": instructions}]},
-                {"role": "user", "content": user_content},
+            "messages": [
+                {"role": "system", "content": instructions},
+                user_message,
             ],
         }
         if response_format is not None:
-            # Responses API uses "text.format" for structured output.
-            payload["text"] = {"format": response_format}
+            payload["response_format"] = response_format
         if temperature is not None:
             payload["temperature"] = temperature
 
@@ -177,17 +192,36 @@ class YunwuClient:
 
 
 def _extract_response_text(data: dict[str, Any]) -> str:
-    """Pull assistant text out of a Responses-API payload.
+    """Pull assistant text out of an OpenAI-shaped payload.
 
-    Tolerates two shapes:
-      * ``output_text`` short-cut field.
-      * ``output[*].content[*].text`` (preferred).
+    Tolerates three shapes:
+      * Chat-completions: ``choices[0].message.content`` (preferred).
+      * Responses-API ``output_text`` short-cut.
+      * Responses-API ``output[*].content[*].text``.
     """
+
+    # Chat-completions (what /v1/chat/completions returns) — preferred shape.
+    choices = data.get("choices") or []
+    if choices:
+        msg = choices[0].get("message") or {}
+        content = msg.get("content")
+        if isinstance(content, str) and content:
+            return content
+        # Some providers return a list of content parts even on chat shape.
+        if isinstance(content, list):
+            chunks: list[str] = []
+            for part in content:
+                if isinstance(part, dict):
+                    text = part.get("text")
+                    if isinstance(text, str):
+                        chunks.append(text)
+            if chunks:
+                return "".join(chunks)
 
     if isinstance(data.get("output_text"), str) and data["output_text"]:
         return data["output_text"]
 
-    chunks: list[str] = []
+    chunks = []
     for item in data.get("output") or []:
         for c in item.get("content") or []:
             text = c.get("text") if isinstance(c, dict) else None
@@ -197,14 +231,6 @@ def _extract_response_text(data: dict[str, Any]) -> str:
                 chunks.append(text["value"])
     if chunks:
         return "".join(chunks)
-
-    # Older chat-completions fallback shape.
-    choices = data.get("choices") or []
-    if choices:
-        msg = choices[0].get("message") or {}
-        content = msg.get("content")
-        if isinstance(content, str):
-            return content
 
     raise YunwuError(f"Could not parse response text from payload: keys={list(data)}")
 
