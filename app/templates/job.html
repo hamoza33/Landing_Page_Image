@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>صفحة الهبوط — {{ job.id }}</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>نتيجة الوظيفة</h1>
+    <p class="meta">المعرف: <code>{{ job.id }}</code> — الحالة: <strong>{{ job.status }}</strong> — الخطوة: {{ job.step }}</p>
+    {% if job.error %}
+      <p class="error">خطأ: {{ job.error }}</p>
+    {% endif %}
+
+    {% if long_image_url %}
+      <h2>الصورة الطويلة</h2>
+      <p>
+        <a href="{{ long_image_url }}" download>تنزيل PNG الكامل</a>
+      </p>
+      <img class="long-image" src="{{ long_image_url }}" alt="Landing page" />
+    {% endif %}
+
+    {% if section_urls %}
+      <h2>الأقسام الثمانية</h2>
+      <div class="sections-grid">
+        {% for url in section_urls %}
+          <a href="{{ url }}" target="_blank" rel="noopener">
+            <img src="{{ url }}" alt="Section" />
+          </a>
+        {% endfor %}
+      </div>
+    {% endif %}
+
+    <h2>الملفات</h2>
+    <ul class="files">
+      {% if copy_url %}<li><a href="{{ copy_url }}" target="_blank">copy.json</a></li>{% endif %}
+      {% if brief_url %}<li><a href="{{ brief_url }}" target="_blank">brief.json</a></li>{% endif %}
+    </ul>
+
+    <p><a class="link" href="/">↺ توليد جديد</a></p>
+  </main>
+</body>
+</html>
