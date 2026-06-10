@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>الإعدادات — مولّد صفحة الهبوط</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="container">
+    <p class="settings-link"><a href="/">← الرجوع إلى الصفحة الرئيسية</a></p>
+    <h1>الإعدادات الحالية</h1>
+    <p class="lede">
+      جميع المتغيرات أدناه تُقرأ من ملف <code>.env</code> أو من بيئة التشغيل.
+      التعديلات تتطلّب إعادة تشغيل التطبيق. للوثائق الكاملة راجع
+      <code>docs/SETTINGS.md</code>.
+    </p>
+
+    {% for group_name, items in groups %}
+      <section class="card settings-card">
+        <h2>{{ group_name }}</h2>
+        <table class="settings-table">
+          <tbody>
+            {% for key, value in items %}
+              <tr>
+                <th>{{ key }}</th>
+                <td><code>{{ value }}</code></td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    {% endfor %}
+
+    <section class="card settings-card">
+      <h2>واجهات الاتصال (APIs)</h2>
+      <ul class="api-list">
+        {% for label, url in apis %}
+          <li><strong>{{ label }}:</strong> <code>{{ url }}</code></li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="card settings-card">
+      <h2>قوالب الـ Prompts</h2>
+      <p>قوالب التوليد البصري لكل قسم تقع في <code>app/prompts/sections/</code>:</p>
+      <ul>
+        <li><code>_shared.j2</code> — العقد البصري المشترك لكل الأقسام</li>
+        <li><code>hero.j2</code> · <code>features.j2</code> · <code>before_after.j2</code></li>
+        <li><code>testimonials.j2</code> · <code>faq.j2</code> · <code>lifestyle.j2</code></li>
+        <li><code>education.j2</code> · <code>closing.j2</code></li>
+      </ul>
+      <p>قالب النص العربي يقع في <code>app/prompts/copy_system_ar.txt</code>.</p>
+    </section>
+  </main>
+</body>
+</html>

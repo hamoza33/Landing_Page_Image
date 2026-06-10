@@ -1,0 +1,18 @@
+{% include "_shared.j2" %}
+
+SECTION 5 — FAQ
+===============
+Role: An informative, calm panel that visually reads as "answers".
+
+Scene:
+  - A reading-room mood: soft beige / warm gradient background.
+  - The product (ref #1) in the lower-third, small but recognizable.
+  - Upper two-thirds: an open, uncluttered area with subtle illustrative
+    motifs (soft circles, dotted lines, gentle paper texture) that suggest
+    "questions answered" without rendering literal Q&A boxes.
+  - Reserve {{ copy.faq.items|length }} stacked horizontal strips for FAQ
+    text to be overlaid on top later.
+
+FAQ list (overlay zone reference only — DO NOT draw text):
+{% for q in copy.faq.items %}  - س: {{ q.question }} — ج: {{ q.answer }}
+{% endfor %}

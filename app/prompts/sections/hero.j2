@@ -1,0 +1,24 @@
+{% include "_shared.j2" %}
+
+SECTION 1 — HERO
+================
+Role: Establish the product as the desirable hero. This is the strongest
+brand impression of the whole page.
+
+Scene:
+  - The product (ref #1) placed center-frame as a clear, photorealistic
+    hero subject, slightly larger-than-life.
+  - Dramatic editorial lighting with a soft halo / glow behind the product.
+  - Background: an aspirational environment that matches the category
+    ({{ brief.category }}) — think premium spa-like, soft fabrics, glass,
+    polished stone, or warm minimal interior, never literal supermarket
+    shelves.
+  - Empty negative space at the TOP-LEFT region for the headline overlay.
+  - Empty negative space at the BOTTOM for the CTA overlay.
+
+Copy overlay zones (DO NOT draw text — just keep these regions visually calm):
+  - Top: headline "{{ copy.hero.headline }}"
+  - Below top: subhead "{{ copy.hero.subhead }}"
+  - Bottom strip: CTA "{{ copy.hero.cta }}"
+
+Mood cue: "{{ copy.hero.headline }} — {{ copy.hero.subhead }}"

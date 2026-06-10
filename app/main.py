@@ -67,6 +67,71 @@ async def healthz() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/settings", name="settings_view", response_class=HTMLResponse)
+async def settings_view(request: Request) -> HTMLResponse:
+    """Read-only overview of the live settings.
+
+    Variables are env-driven and require a process restart to change. Use
+    this page to see exactly what the running container is configured with,
+    plus the API endpoints in play. Full reference: ``docs/SETTINGS.md``.
+    """
+
+    groups = [
+        ("Yunwu API", [
+            ("YUNWU_BASE_URL", settings.yunwu_base_url),
+            ("YUNWU_CHAT_MODEL", settings.chat_model),
+            ("YUNWU_IMAGE_EDIT_MODEL", settings.image_edit_model),
+            ("YUNWU_IMAGE_MODEL", settings.image_model),
+            ("HTTP_TIMEOUT (s)", settings.http_timeout),
+        ]),
+        ("Web Research", [
+            ("WEB_RESEARCH_ENABLED", settings.web_research_enabled),
+            ("TAVILY_API_KEY set", bool(settings.tavily_api_key)),
+        ]),
+        ("Image Generation", [
+            ("IMAGE_SIZE", settings.image_size),
+            ("IMAGE_QUALITY", settings.image_quality),
+            ("IMAGE_FORMAT", settings.image_format),
+            ("IMAGE_CONCURRENCY", settings.image_concurrency),
+        ]),
+        ("Seamless Continuity", [
+            ("SEAMLESS_FLOW", settings.seamless_flow),
+            ("SEAM_STRIP_HEIGHT (px)", settings.seam_strip_height),
+            ("SEAM_BLEND_HEIGHT (px)", settings.seam_blend_height),
+        ]),
+        ("Text Overlay", [
+            ("OVERLAY_TEXT_ENABLED", settings.overlay_text_enabled),
+            ("OVERLAY_HEADLINE_SIZE", settings.overlay_headline_size),
+            ("OVERLAY_SUBHEAD_SIZE", settings.overlay_subhead_size),
+            ("OVERLAY_BODY_SIZE", settings.overlay_body_size),
+            ("OVERLAY_TEXT_COLOR", settings.overlay_text_color),
+            ("OVERLAY_SHADOW_COLOR", settings.overlay_shadow_color),
+            ("OVERLAY_MAX_WIDTH_RATIO", settings.overlay_max_width_ratio),
+            ("OVERLAY_PADDING_RATIO", settings.overlay_padding_ratio),
+            ("FONT_ARABIC_REGULAR", str(settings.font_arabic_regular)),
+            ("FONT_ARABIC_BOLD", str(settings.font_arabic_bold)),
+        ]),
+        ("Paths", [
+            ("OUTPUT_DIR", str(settings.output_dir)),
+            ("UPLOAD_DIR", str(settings.upload_dir)),
+            ("ASSETS_DIR", str(settings.assets_dir)),
+        ]),
+    ]
+    apis = [
+        ("Yunwu chat / vision",
+         f"POST {settings.yunwu_base_url}/v1/chat/completions"),
+        ("Yunwu image edit (multi-reference)",
+         f"POST {settings.yunwu_base_url}/v1/images/generations  (model={settings.image_edit_model})"),
+        ("Tavily web search",
+         "POST https://api.tavily.com/search"),
+    ]
+    return templates.TemplateResponse(
+        request,
+        "settings.html",
+        {"groups": groups, "apis": apis},
+    )
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     jobs = [_job_payload(j) for j in _STORE.list()]

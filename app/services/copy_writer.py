@@ -46,14 +46,27 @@ class CopyWriter:
         lines = [
             "معلومات المنتج:",
             f"- الاسم: {brief.name}",
-            f"- الفئة: {brief.category}",
+            (f"- العلامة التجارية: {brief.brand}" if brief.brand else ""),
+            f"- الفئة: {brief.category}"
+            + (f" / {brief.sub_category}" if brief.sub_category else ""),
+            (f"- بلد المنشأ: {brief.country_of_origin}" if brief.country_of_origin else ""),
             f"- الاستخدام: {brief.primary_use}",
             f"- المستخدم المستهدف: {brief.target_user}",
+            (f"- المشكلة التي يحلها: {brief.primary_problem_solved}" if brief.primary_problem_solved else ""),
         ]
         if brief.materials:
-            lines.append(f"- المواد/المكونات: {', '.join(brief.materials)}")
+            lines.append(f"- المواد: {', '.join(brief.materials)}")
+        if brief.ingredients:
+            lines.append(f"- المكونات الرئيسية: {', '.join(brief.ingredients)}")
         if brief.benefits:
             lines.append(f"- الفوائد: {', '.join(brief.benefits)}")
+        if brief.unique_selling_points:
+            lines.append(f"- نقاط البيع الفريدة: {', '.join(brief.unique_selling_points)}")
+        if brief.competitive_angles:
+            lines.append(f"- زوايا تنافسية: {', '.join(brief.competitive_angles)}")
+        if brief.web_research_summary:
+            lines.append(f"- ملخص بحث الإنترنت: {brief.web_research_summary}")
+        lines = [ln for ln in lines if ln]
         lines.append(
             "\nأنشئ نصوص صفحة الهبوط كاملة لهذا المنتج بصيغة JSON حسب التعليمات."
         )

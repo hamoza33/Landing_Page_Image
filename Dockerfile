@@ -6,8 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# System deps for Pillow (libjpeg, zlib are present in slim, but freetype +
-# libwebp are useful and small).
+# System deps for Pillow.
 RUN apt-get update \
  && apt-get install -y --no-install-recommends \
         libjpeg62-turbo \
@@ -20,6 +19,7 @@ COPY requirements.txt ./
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 COPY app ./app
+COPY assets ./assets
 
 RUN mkdir -p /app/output /app/uploads
 

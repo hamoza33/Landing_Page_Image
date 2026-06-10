@@ -1,0 +1,19 @@
+{% include "_shared.j2" %}
+
+SECTION 4 — TESTIMONIALS
+========================
+Role: Social-proof feel without showing fake quote cards.
+
+Scene:
+  - Background: ambient lifestyle scene (light café table, warm interior,
+    soft sunlight) that gives a feeling of real customers loving the
+    product.
+  - The product (ref #1) tastefully placed off-center (right or left
+    third), accompanied by everyday objects — a journal, a small plant,
+    a folded soft fabric.
+  - Reserve 3 calm horizontal zones stacked vertically for testimonial
+    cards to be overlaid on top later.
+
+Testimonials to leave room for ({{ copy.testimonials.items|length }} cards):
+{% for t in copy.testimonials.items %}  - {{ t.name }} — {{ t.location }}: "{{ t.quote }}"
+{% endfor %}

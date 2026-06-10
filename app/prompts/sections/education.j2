@@ -1,0 +1,17 @@
+{% include "_shared.j2" %}
+
+SECTION 7 — EDUCATION
+=====================
+Role: Explain how / why it works — infographic-feeling but visually rich.
+
+Scene:
+  - The product (ref #1) prominent in the lower portion, slightly tilted
+    or floating with a soft shadow.
+  - Surround it with elegant illustrative motifs: cross-section views,
+    droplets, leaves, ingredient hints — anything visual that suggests
+    science meets nature, appropriate to "{{ brief.category }}".
+{% if brief.ingredients %}  - Subtle nods to key ingredients: {{ brief.ingredients|join(", ") }}.
+{% endif %}  - Calm palette, plenty of negative space.
+  - Reserve a strong upper-third zone for an overlay headline + body.
+
+Mood cue: {{ copy.education.headline }} — {{ copy.education.body }}

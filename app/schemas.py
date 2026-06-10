@@ -20,15 +20,40 @@ SECTION_KEYS: tuple[str, ...] = (
 
 
 class ProductBrief(BaseModel):
-    """Structured output of the vision/analyzer step."""
+    """Structured output of the vision + research step.
 
+    Filled in two passes:
+      1. Vision pass — what the image shows (brand, type, visible claims, etc.)
+      2. Optional web-research pass — enriched with category trends, competitor
+         angles, and authoritative claim phrasing.
+    """
+
+    # Identity
     name: str
+    brand: str = ""
     category: str
+    sub_category: str = ""
+    country_of_origin: str = ""
+
+    # Composition
     materials: list[str] = Field(default_factory=list)
+    ingredients: list[str] = Field(default_factory=list)
+
+    # Audience / use
     target_user: str = ""
     primary_use: str = ""
+    primary_problem_solved: str = ""
+
+    # Sales angles
     benefits: list[str] = Field(default_factory=list)
+    unique_selling_points: list[str] = Field(default_factory=list)
+    competitive_angles: list[str] = Field(default_factory=list)
+    web_research_summary: str = ""
+    web_research_sources: list[str] = Field(default_factory=list)
+
+    # Visual direction
     visual_style_keywords: list[str] = Field(default_factory=list)
+    palette_hex: list[str] = Field(default_factory=list)  # e.g. ["#f7f0e6", "#b88746"]
 
 
 class HeroCopy(BaseModel):
