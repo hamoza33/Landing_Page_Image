@@ -107,14 +107,28 @@ class LandingCopy(BaseModel):
 
 
 JobStatus = Literal["pending", "running", "done", "error"]
+SectionStatus = Literal["pending", "running", "done", "error"]
+
+
+class JobSection(BaseModel):
+    """Per-section state for a job."""
+
+    key: str
+    index: int
+    status: SectionStatus = "pending"
+    prompt: str = ""
+    image_path: str | None = None
+    error: str | None = None
 
 
 class JobRecord(BaseModel):
     id: str
+    created_at: float = 0.0  # unix epoch
     status: JobStatus = "pending"
     step: str = "queued"
     error: str | None = None
-    long_image: str | None = None
-    sections: list[str] = Field(default_factory=list)
+    product_name: str | None = None  # filled after analyze
+    upload_path: str | None = None  # the user's original photo
+    sections: list[JobSection] = Field(default_factory=list)
     copy_path: str | None = None
     brief_path: str | None = None

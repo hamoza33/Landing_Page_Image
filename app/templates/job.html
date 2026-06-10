@@ -3,43 +3,140 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>صفحة الهبوط — {{ job.id }}</title>
+  <title>{% if job.product_name %}{{ job.product_name }}{% else %}{{ job.id }}{% endif %} — صفحة الهبوط</title>
   <link rel="stylesheet" href="/static/style.css" />
 </head>
 <body>
   <main class="container">
-    <h1>نتيجة الوظيفة</h1>
-    <p class="meta">المعرف: <code>{{ job.id }}</code> — الحالة: <strong>{{ job.status }}</strong> — الخطوة: {{ job.step }}</p>
+    <h1>{% if job.product_name %}{{ job.product_name }}{% else %}نتيجة الوظيفة{% endif %}</h1>
+    <p class="meta">
+      المعرف: <code>{{ job.id }}</code> — 
+      الحالة: <strong class="status-{{ job.status }}">{{ job.status }}</strong> — 
+      الخطوة: {{ job.step }}
+    </p>
     {% if job.error %}
       <p class="error">خطأ: {{ job.error }}</p>
     {% endif %}
 
-    {% if long_image_url %}
-      <h2>الصورة الطويلة</h2>
-      <p>
-        <a href="{{ long_image_url }}" download>تنزيل PNG الكامل</a>
-      </p>
-      <img class="long-image" src="{{ long_image_url }}" alt="Landing page" />
-    {% endif %}
+    <div class="actions">
+      <a class="link" href="/">↺ توليد جديد</a>
+      {% if payload.upload_url %}
+        <a class="link" href="{{ payload.upload_url }}" download>تنزيل الصورة الأصلية</a>
+      {% endif %}
+      {% if payload.copy_url %}<a class="link" href="{{ payload.copy_url }}" target="_blank">copy.json</a>{% endif %}
+      {% if payload.brief_url %}<a class="link" href="{{ payload.brief_url }}" target="_blank">brief.json</a>{% endif %}
+    </div>
 
-    {% if section_urls %}
-      <h2>الأقسام الثمانية</h2>
-      <div class="sections-grid">
-        {% for url in section_urls %}
-          <a href="{{ url }}" target="_blank" rel="noopener">
-            <img src="{{ url }}" alt="Section" />
-          </a>
+    {% if payload.sections %}
+      <h2>الأقسام ({{ payload.sections|length }})</h2>
+      <div class="sections-stack">
+        {% for sec in payload.sections %}
+          <div class="section-panel" id="section-{{ sec.key }}">
+            <div class="section-header">
+              <span class="section-title">{{ sec.index + 1 }}. {{ sec.key }}</span>
+              <span class="section-status status-{{ sec.status }}">{{ sec.status }}</span>
+            </div>
+            {% if sec.error %}
+              <p class="section-error">{{ sec.error }}</p>
+            {% endif %}
+            {% if sec.image_url %}
+              <a href="{{ sec.image_url }}" target="_blank">
+                <img src="{{ sec.image_url }}" alt="{{ sec.key }}" class="section-image" loading="lazy" />
+              </a>
+            {% elif sec.status == "running" %}
+              <div class="section-placeholder">جارٍ التوليد…</div>
+            {% elif sec.status == "pending" %}
+              <div class="section-placeholder">معلّق</div>
+            {% endif %}
+
+            <details class="section-details">
+              <summary>الإعدادات</summary>
+              <form class="regenerate-form" data-job-id="{{ job.id }}" data-section-key="{{ sec.key }}">
+                <label for="prompt-{{ sec.key }}">تعديل الوصف (اختياري):</label>
+                <textarea name="prompt" id="prompt-{{ sec.key }}" rows="3" placeholder="اترك فارغاً للإعادة بنفس الوصف…">{{ sec.prompt }}</textarea>
+                <button type="submit" class="primary small">إعادة توليد</button>
+                <span class="regen-status"></span>
+              </form>
+            </details>
+          </div>
         {% endfor %}
       </div>
     {% endif %}
-
-    <h2>الملفات</h2>
-    <ul class="files">
-      {% if copy_url %}<li><a href="{{ copy_url }}" target="_blank">copy.json</a></li>{% endif %}
-      {% if brief_url %}<li><a href="{{ brief_url }}" target="_blank">brief.json</a></li>{% endif %}
-    </ul>
-
-    <p><a class="link" href="/">↺ توليد جديد</a></p>
   </main>
+
+  <script>
+    // Poll for live updates if job is still running.
+    {% if job.status == "running" %}
+    (async function pollJob() {
+      while (true) {
+        await new Promise(r => setTimeout(r, 3000));
+        const res = await fetch("/jobs/{{ job.id }}");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.status !== "running") {
+          location.reload();
+          return;
+        }
+        // Update each section's status + image in-place if changed.
+        for (const sec of data.sections) {
+          const panel = document.getElementById("section-" + sec.key);
+          if (!panel) continue;
+          const statusEl = panel.querySelector(".section-status");
+          if (statusEl) statusEl.textContent = sec.status;
+          const img = panel.querySelector(".section-image");
+          if (sec.image_url && (!img || img.src !== sec.image_url)) {
+            const placeholder = panel.querySelector(".section-placeholder");
+            if (placeholder) {
+              const newImg = document.createElement("img");
+              newImg.src = sec.image_url;
+              newImg.alt = sec.key;
+              newImg.className = "section-image";
+              newImg.loading = "lazy";
+              const link = document.createElement("a");
+              link.href = sec.image_url;
+              link.target = "_blank";
+              link.appendChild(newImg);
+              placeholder.replaceWith(link);
+            }
+          }
+        }
+      }
+    })();
+    {% endif %}
+
+    // Regenerate forms
+    document.querySelectorAll(".regenerate-form").forEach(form => {
+      form.addEventListener("submit", async (ev) => {
+        ev.preventDefault();
+        const jobId = form.dataset.jobId;
+        const key = form.dataset.sectionKey;
+        const statusEl = form.querySelector(".regen-status");
+        statusEl.textContent = "جارٍ الإرسال…";
+        const fd = new FormData(form);
+        const res = await fetch(`/jobs/${jobId}/sections/${key}/regenerate`, {
+          method: "POST",
+          body: fd,
+        });
+        if (!res.ok) {
+          statusEl.textContent = "فشل: " + res.status;
+          return;
+        }
+        statusEl.textContent = "تم. تحديث تلقائي بعد لحظات…";
+        // Poll until that section is done, then reload.
+        while (true) {
+          await new Promise(r => setTimeout(r, 2000));
+          const r2 = await fetch(`/jobs/${jobId}`);
+          if (!r2.ok) break;
+          const j = await r2.json();
+          const sec = j.sections.find(s => s.key === key);
+          if (!sec) break;
+          if (sec.status === "done" || sec.status === "error") {
+            location.reload();
+            return;
+          }
+        }
+      });
+    });
+  </script>
 </body>
 </html>

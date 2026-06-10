@@ -46,11 +46,13 @@ class YunwuError(RuntimeError):
 class YunwuClient:
     """Thin async wrapper around the Yunwu HTTP API."""
 
-    def __init__(self, settings: Settings | None = None, *, timeout: float = 120.0):
+    def __init__(self, settings: Settings | None = None, *, timeout: float | None = None):
         self.settings = settings or default_settings
         if not self.settings.yunwu_api_key:
             log.warning("YUNWU_API_KEY is not set; calls will fail.")
-        self._timeout = timeout
+        # Image generation at 1024x3072 routinely takes 60-180s per call, so
+        # we default high and let callers / env override if they need to.
+        self._timeout = timeout if timeout is not None else self.settings.http_timeout
 
     # ------------------------------------------------------------------ utils
 

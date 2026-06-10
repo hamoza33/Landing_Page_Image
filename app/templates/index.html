@@ -9,7 +9,7 @@
 <body>
   <main class="container">
     <h1>مولّد صفحة الهبوط</h1>
-    <p class="lede">ارفع صورة المنتج، وسنُنشئ لك صفحة هبوط عربية كاملة بصورة طويلة واحدة جاهزة للاستخدام في السوق الخليجي.</p>
+    <p class="lede">ارفع صورة المنتج، وسنُنشئ لك صفحة هبوط عربية كاملة من 8 أقسام عمودية جاهزة للاستخدام في السوق الخليجي.</p>
 
     <form id="upload-form" enctype="multipart/form-data" class="card">
       <label for="image" class="file-label">اختر صورة المنتج</label>
@@ -22,6 +22,28 @@
       <p id="status-text">قيد الإعداد…</p>
       <a id="view-link" class="link" href="#" target="_blank" rel="noopener">عرض النتيجة</a>
     </section>
+
+    {% if jobs %}
+      <h2 class="history-header">الوظائف السابقة</h2>
+      <ul class="job-history">
+        {% for job in jobs %}
+          <li class="job-card">
+            <a href="{{ job.view_url }}" class="job-link">
+              <div class="job-meta">
+                <span class="job-id">{{ job.id }}</span>
+                <span class="job-status status-{{ job.status }}">{{ job.status }}</span>
+              </div>
+              {% if job.product_name %}
+                <div class="job-product">{{ job.product_name }}</div>
+              {% endif %}
+              {% if job.upload_url %}
+                <img src="{{ job.upload_url }}" alt="Product" class="job-thumb" loading="lazy" />
+              {% endif %}
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
   </main>
 
   <script>

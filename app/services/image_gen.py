@@ -59,6 +59,40 @@ class ImageGenerator:
         self.settings = settings or default_settings
         self.client = client or YunwuClient(self.settings)
 
+    @staticmethod
+    def fresh_seed() -> int:
+        return random.randint(10_000, 9_999_999)
+
+    async def render_section(
+        self,
+        *,
+        key: str,
+        index: int,
+        brief: ProductBrief,
+        copy: LandingCopy,
+        seed: int,
+        product_image: bytes | None = None,
+        prompt_override: str | None = None,
+    ) -> tuple[str, bytes]:
+        """Render a single section; returns (prompt_used, normalized_png_bytes)."""
+
+        style = self._style_bible(brief)
+        prompt = prompt_override if prompt_override else self._build_section_prompt(
+            key, index, style, copy, seed
+        )
+        use_edit = product_image is not None and key in EDIT_SECTIONS
+        img_bytes = await self._call_image_api(
+            prompt=prompt,
+            use_edit=use_edit,
+            product_image=product_image,
+        )
+        normalized = _normalize_to_size(
+            img_bytes,
+            target_w=self.settings.image_width,
+            target_h=self.settings.section_height,
+        )
+        return prompt, normalized
+
     async def generate_all(
         self,
         brief: ProductBrief,
@@ -66,23 +100,20 @@ class ImageGenerator:
         *,
         product_image: bytes | None = None,
     ) -> list[GeneratedSection]:
-        style = self._style_bible(brief)
-        seed = random.randint(10_000, 9_999_999)
+        """Render all 8 sections in parallel (used by tests / CLI)."""
+
+        seed = self.fresh_seed()
         sem = asyncio.Semaphore(max(1, self.settings.image_concurrency))
 
         async def run_one(idx: int, key: str) -> GeneratedSection:
             async with sem:
-                prompt = self._build_section_prompt(key, idx, style, copy, seed)
-                use_edit = product_image is not None and key in EDIT_SECTIONS
-                img_bytes = await self._call_image_api(
-                    prompt=prompt,
-                    use_edit=use_edit,
+                prompt, normalized = await self.render_section(
+                    key=key,
+                    index=idx,
+                    brief=brief,
+                    copy=copy,
+                    seed=seed,
                     product_image=product_image,
-                )
-                normalized = _normalize_to_size(
-                    img_bytes,
-                    target_w=self.settings.image_width,
-                    target_h=self.settings.section_height,
                 )
                 return GeneratedSection(
                     key=key,

@@ -51,6 +51,7 @@ class Settings:
     image_width: int
     section_height: int
     image_concurrency: int
+    http_timeout: float
 
     @classmethod
     def load(cls) -> "Settings":
@@ -74,6 +75,7 @@ class Settings:
             image_width=_env_int("IMAGE_WIDTH", 1024),
             section_height=_env_int("SECTION_HEIGHT", 3072),
             image_concurrency=_env_int("IMAGE_CONCURRENCY", 3),
+            http_timeout=float(_env("HTTP_TIMEOUT", "600") or "600"),
         )
 
 
