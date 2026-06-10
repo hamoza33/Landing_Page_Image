@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مولّد صفحة الهبوط</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <main class="container">
+    <h1>مولّد صفحة الهبوط</h1>
+    <p class="lede">ارفع صورة المنتج، وسنُنشئ لك صفحة هبوط عربية كاملة بصورة طويلة واحدة جاهزة للاستخدام في السوق الخليجي.</p>
+
+    <form id="upload-form" enctype="multipart/form-data" class="card">
+      <label for="image" class="file-label">اختر صورة المنتج</label>
+      <input type="file" name="image" id="image" accept="image/*" required />
+      <button type="submit" class="primary">إنشاء الصفحة</button>
+    </form>
+
+    <section id="status" class="status hidden">
+      <h2>الحالة</h2>
+      <p id="status-text">قيد الإعداد…</p>
+      <a id="view-link" class="link" href="#" target="_blank" rel="noopener">عرض النتيجة</a>
+    </section>
+  </main>
+
+  <script>
+    const form = document.getElementById("upload-form");
+    const status = document.getElementById("status");
+    const statusText = document.getElementById("status-text");
+    const viewLink = document.getElementById("view-link");
+
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const data = new FormData(form);
+      status.classList.remove("hidden");
+      statusText.textContent = "جارٍ الرفع…";
+      viewLink.style.display = "none";
+
+      const res = await fetch("/generate", { method: "POST", body: data });
+      if (!res.ok) {
+        statusText.textContent = "فشل الرفع: " + res.status;
+        return;
+      }
+      const body = await res.json();
+      viewLink.href = body.view_url;
+      viewLink.style.display = "inline-block";
+      poll(body.status_url);
+    });
+
+    async function poll(url) {
+      while (true) {
+        const r = await fetch(url);
+        if (!r.ok) {
+          statusText.textContent = "خطأ في جلب الحالة";
+          return;
+        }
+        const j = await r.json();
+        statusText.textContent = "الخطوة: " + j.step + " — الحالة: " + j.status;
+        if (j.status === "done" || j.status === "error") {
+          if (j.status === "error") {
+            statusText.textContent += " — " + (j.error || "");
+          }
+          return;
+        }
+        await new Promise((r) => setTimeout(r, 2000));
+      }
+    }
+  </script>
+</body>
+</html>

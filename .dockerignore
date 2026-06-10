@@ -1,0 +1,13 @@
+.git
+.github
+.venv
+venv
+__pycache__
+*.pyc
+.env
+.env.*
+output
+uploads
+.agents_tmp
+tests
+.pytest_cache

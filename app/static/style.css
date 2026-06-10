@@ -1,0 +1,115 @@
+:root {
+  --bg: #faf7f2;
+  --ink: #1f2937;
+  --muted: #6b7280;
+  --accent: #b88746;
+  --accent-strong: #9a6f33;
+  --card: #ffffff;
+  --error: #b91c1c;
+}
+
+* { box-sizing: border-box; }
+
+html { font-family: "Tajawal", "Segoe UI", system-ui, sans-serif; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.6;
+}
+
+.container {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 32px 20px 80px;
+}
+
+h1 {
+  font-size: 2rem;
+  margin-bottom: 0.25em;
+  color: var(--accent-strong);
+}
+
+h2 {
+  margin-top: 2.4em;
+  border-bottom: 2px solid var(--accent);
+  padding-bottom: 6px;
+  display: inline-block;
+}
+
+.lede { color: var(--muted); margin-top: 0; }
+
+.card {
+  background: var(--card);
+  padding: 24px;
+  border-radius: 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.05);
+  display: grid;
+  gap: 16px;
+}
+
+.file-label { font-weight: 700; }
+
+input[type="file"] {
+  padding: 12px;
+  border: 1px dashed var(--accent);
+  border-radius: 10px;
+  background: var(--bg);
+  width: 100%;
+}
+
+button.primary {
+  background: var(--accent);
+  color: #fff;
+  border: 0;
+  padding: 12px 18px;
+  border-radius: 10px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+button.primary:hover { background: var(--accent-strong); }
+
+.status {
+  margin-top: 28px;
+  padding: 20px;
+  border-radius: 12px;
+  background: #fff7e6;
+  border: 1px solid #f0d59c;
+}
+.status.hidden { display: none; }
+
+.link {
+  color: var(--accent-strong);
+  text-decoration: none;
+  font-weight: 700;
+}
+.link:hover { text-decoration: underline; }
+
+.meta { color: var(--muted); }
+.error { color: var(--error); font-weight: 700; }
+
+.long-image {
+  width: 100%;
+  max-width: 480px;
+  display: block;
+  margin: 1em 0;
+  border: 1px solid #eee;
+  border-radius: 8px;
+}
+
+.sections-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  margin-top: 1em;
+}
+.sections-grid img {
+  width: 100%;
+  border-radius: 6px;
+  border: 1px solid #ddd;
+}
+
+.files { list-style: none; padding: 0; }
+.files li { padding: 6px 0; }
