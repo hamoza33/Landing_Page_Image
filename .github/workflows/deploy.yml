@@ -16,19 +16,42 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Validate required secrets
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+        run: |
+          missing=()
+          [ -z "$VPS_HOST" ]    && missing+=("VPS_HOST")
+          [ -z "$VPS_USER" ]    && missing+=("VPS_USER")
+          [ -z "$VPS_SSH_KEY" ] && missing+=("VPS_SSH_KEY")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error ::Missing required secrets: ${missing[*]}"
+            echo "Set these in: Settings → Secrets and variables → Actions → New repository secret"
+            echo "  VPS_HOST     e.g. 35.255.81.115"
+            echo "  VPS_USER     e.g. root"
+            echo "  VPS_SSH_KEY  the full private key (BEGIN…END)"
+            echo "  APP_DIR      optional, defaults to /opt/landing-generator"
+            echo "  VPS_KNOWN_HOSTS  optional, defaults to ssh-keyscan of VPS_HOST"
+            exit 1
+          fi
+
       - name: Set up SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_KEY }}
           KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           if [ -n "$KNOWN_HOSTS" ]; then
-            echo "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+            printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
           else
-            ssh-keyscan -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+            ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts
           fi
+          chmod 644 ~/.ssh/known_hosts
 
       - name: Deploy via SSH
         env:
@@ -36,17 +59,24 @@ jobs:
           VPS_USER: ${{ secrets.VPS_USER }}
           APP_DIR: ${{ secrets.APP_DIR }}
         run: |
-          ssh "$VPS_USER@$VPS_HOST" "set -e; \
-            cd '${APP_DIR:-/opt/landing-generator}'; \
-            git fetch --all; \
-            git reset --hard origin/main; \
-            docker compose up -d --build; \
-            docker image prune -f"
+          ssh -o BatchMode=yes "$VPS_USER@$VPS_HOST" \
+            "set -e; \
+             cd '${APP_DIR:-/opt/landing-generator}'; \
+             git fetch --all; \
+             git reset --hard origin/main; \
+             docker compose up -d --build; \
+             docker image prune -f"
 
       - name: Healthcheck
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USER: ${{ secrets.VPS_USER }}
         run: |
-          ssh "$VPS_USER@$VPS_HOST" \
-            "for i in {1..20}; do curl -fsS http://127.0.0.1:8000/healthz && exit 0; sleep 3; done; exit 1"
+          ssh -o BatchMode=yes "$VPS_USER@$VPS_HOST" \
+            "for i in \$(seq 1 30); do \
+                curl -fsS http://127.0.0.1:8000/healthz && exit 0; \
+                sleep 3; \
+              done; \
+              echo 'health check failed; recent container logs:'; \
+              docker compose -f /opt/landing-generator/docker-compose.yml logs --tail=80; \
+              exit 1"
