@@ -73,6 +73,11 @@ class Settings:
     output_dir: Path
     upload_dir: Path
     assets_dir: Path
+    # Public base URL of THIS service (e.g. https://landing.shopinzo.bond).
+    # Used to expose uploaded product photos and previously rendered sections
+    # as URLs that gpt-image-2-all can fetch directly via the ``image: [...]``
+    # array. Must be reachable from Yunwu's servers.
+    public_base_url: str
 
     # ------- Image generation -------
     # Yunwu gpt-image-2-all officially supports: 1024x1024, 1536x1024, 1024x1536.
@@ -145,6 +150,8 @@ class Settings:
             output_dir=output_dir,
             upload_dir=upload_dir,
             assets_dir=assets_dir,
+            public_base_url=(_env("PUBLIC_BASE_URL", "https://landing.shopinzo.bond")
+                             or "https://landing.shopinzo.bond").rstrip("/"),
 
             # Image
             image_size=f"{img_w}x{img_h}",
@@ -159,8 +166,9 @@ class Settings:
             seam_strip_height=_env_int("SEAM_STRIP_HEIGHT", 256),
             seam_blend_height=_env_int("SEAM_BLEND_HEIGHT", 96),
 
-            # Overlay
-            overlay_text_enabled=_env_bool("OVERLAY_TEXT_ENABLED", True),
+            # Overlay (default OFF — gpt-image-2-all renders the Arabic text
+            # directly in the image; see app/prompts/sections/*.j2).
+            overlay_text_enabled=_env_bool("OVERLAY_TEXT_ENABLED", False),
             font_arabic_regular=Path(
                 _env("FONT_ARABIC_REGULAR", str(assets_dir / "fonts" / "NotoNaskhArabic-Regular.ttf"))
             ),

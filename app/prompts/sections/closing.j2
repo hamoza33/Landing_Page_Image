@@ -1,20 +1,24 @@
 {% include "_shared.j2" %}
 
-SECTION 8 — CLOSING / CTA
+SECTION 8 - CLOSING / CTA
 =========================
 Role: A confident closing visual that drives the final purchase.
 
 Scene:
   - The product (ref #1) center-frame again, slightly different angle
-    from the hero — gift-worthy, premium, almost ceremonial.
-  - Subtle radiant background — soft beams of warm light, gradient
-    glow behind the product.
-  - Lower third: a calm dark or saturated band ready to host the final
-    CTA overlay.
+    from the hero. Gift-worthy, premium, almost ceremonial.
+  - Subtle radiant background: soft beams of warm light, gradient glow
+    behind the product.
+  - Lower third reserves a calm dark or saturated band for the CTA.
   - Optional supporting props: a soft fabric, a folded ribbon, small
-    botanical sprigs — sparse, premium.
+    botanical sprigs. Sparse and premium.
 
-Copy overlay zones (DO NOT draw text — leave the regions clear):
-  - Upper third: headline "{{ copy.closing.headline }}"
-  - Middle: body "{{ copy.closing.body }}"
-  - Lower band: CTA "{{ copy.closing.cta }}"
+Arabic text to render on the image (RTL, correctly connected letterforms):
+  - HEADLINE (upper third, large, bold):
+    {{ copy.closing.headline|jsafe }}
+  - BODY (middle, medium weight, max two lines, on a soft semi-transparent
+    panel):
+    {{ copy.closing.body|jsafe }}
+  - CTA (lower third, inside a contrasting solid pill or bar, very bold,
+    larger than the body):
+    {{ copy.closing.cta|jsafe }}

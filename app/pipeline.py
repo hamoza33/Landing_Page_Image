@@ -62,6 +62,22 @@ SECTION_FILENAMES = {
 PersistFn = Callable[[JobRecord], Awaitable[None]]
 
 
+def _public_url_for(settings: Settings, abs_path: str | Path) -> str | None:
+    """Map a file under ``output_dir`` to its public ``/files/...`` URL.
+
+    Returns ``None`` if the path is outside ``output_dir`` or
+    ``public_base_url`` is empty.
+    """
+
+    if not settings.public_base_url:
+        return None
+    try:
+        rel = Path(abs_path).resolve().relative_to(settings.output_dir.resolve())
+    except (ValueError, OSError):
+        return None
+    return f"{settings.public_base_url.rstrip('/')}/files/{rel.as_posix()}"
+
+
 class Pipeline:
     """Orchestrator. Turns a single product image into 8 stacked panels."""
 
@@ -148,10 +164,21 @@ class Pipeline:
         product_image: bytes,
         persist: PersistFn | None,
     ) -> None:
-        """Render sections one-by-one carrying the seam strip forward."""
+        """Render sections one-by-one carrying the seam strip forward.
+
+        Each section is sent to ``gpt-image-2-all`` with reference images as
+        public URLs (preferred) so the model can fetch them directly and
+        render Arabic text in-image. We fall back to base64 bytes only if
+        ``PUBLIC_BASE_URL`` isn't set or the upload couldn't be located.
+        """
 
         job_dir = self.settings.output_dir / job.id
-        previous_bottom_strip: bytes | None = None
+        # Resolve the public URL of the original product photo once. Every
+        # section uses it as reference #1.
+        product_url = _public_url_for(self.settings, job.upload_path) if job.upload_path else None
+        primary_ref: bytes | str = product_url or product_image
+
+        previous_seam_ref: bytes | str | None = None
         previous_png: bytes | None = None
         prompts: dict[str, str] = {}
 
@@ -165,8 +192,8 @@ class Pipeline:
                     index=sec.index,
                     brief=brief,
                     copy=copy,
-                    product_image=product_image,
-                    previous_bottom_strip=previous_bottom_strip,
+                    product_image=primary_ref,
+                    previous_bottom_strip=previous_seam_ref,
                 )
 
                 # Belt-and-suspenders: blend the top of this PNG into the
@@ -178,7 +205,7 @@ class Pipeline:
                         blend_height=self.settings.seam_blend_height,
                     )
 
-                # Text overlay (Arabic headlines/CTAs in PIL).
+                # Optional PIL overlay (off by default — model renders text).
                 png_with_text = self.overlay.apply(
                     section_key=sec.key,
                     png_bytes=png,
@@ -189,17 +216,24 @@ class Pipeline:
                 path = job_dir / fname
                 path.write_bytes(png_with_text)
 
+                # Save the seam strip as a real file so the next section can
+                # reference it via URL. Using the *raw* (text-free) seam keeps
+                # the next section's prompt instruction precise.
+                seam_bytes = extract_bottom_strip(
+                    png, strip_height=self.settings.seam_strip_height
+                )
+                seam_path = job_dir / f"section_{sec.index + 1}_{sec.key}_seam.png"
+                seam_path.write_bytes(seam_bytes)
+                seam_url = _public_url_for(self.settings, seam_path)
+
                 sec.prompt = prompt
                 sec.image_path = str(path)
                 sec.status = "done"
                 sec.error = None
                 prompts[sec.key] = prompt
 
-                # Carry the seam strip from the *raw* (text-free) render so the
-                # next section's seam reference is clean colors only.
-                previous_bottom_strip = extract_bottom_strip(
-                    png, strip_height=self.settings.seam_strip_height
-                )
+                # Carry forward as URL if we have one, else as bytes.
+                previous_seam_ref = seam_url or seam_bytes
                 previous_png = png
             except Exception as exc:  # noqa: BLE001
                 log.exception("[job=%s] section %s failed", job.id, sec.key)
@@ -207,7 +241,7 @@ class Pipeline:
                 sec.error = f"{type(exc).__name__}: {exc}"
                 # On error, the chain is broken — next section starts fresh
                 # (no seam ref). Better than passing a bogus strip.
-                previous_bottom_strip = None
+                previous_seam_ref = None
                 previous_png = None
             finally:
                 if persist:
@@ -251,17 +285,29 @@ class Pipeline:
         if not job.upload_path or not Path(job.upload_path).exists():
             raise RuntimeError("Original product image missing; cannot regenerate.")
         product_image = Path(job.upload_path).read_bytes()
+        product_url = _public_url_for(self.settings, job.upload_path)
+        primary_ref: bytes | str = product_url or product_image
 
         # Seam reference from previous section.
-        previous_bottom_strip: bytes | None = None
+        previous_seam_ref: bytes | str | None = None
         previous_png: bytes | None = None
         if sec.index > 0:
             prev = next(s for s in job.sections if s.index == sec.index - 1)
             if prev.image_path and Path(prev.image_path).exists():
                 previous_png = Path(prev.image_path).read_bytes()
-                previous_bottom_strip = extract_bottom_strip(
+                seam_bytes = extract_bottom_strip(
                     previous_png, strip_height=self.settings.seam_strip_height
                 )
+                # Reuse the on-disk seam file if present (created during the
+                # initial run), else fall back to bytes.
+                seam_path = (
+                    self.settings.output_dir / job.id /
+                    f"section_{prev.index + 1}_{prev.key}_seam.png"
+                )
+                if seam_path.exists():
+                    previous_seam_ref = _public_url_for(self.settings, seam_path) or seam_bytes
+                else:
+                    previous_seam_ref = seam_bytes
 
         sec.status = "running"
         sec.error = None
@@ -274,8 +320,8 @@ class Pipeline:
                 index=sec.index,
                 brief=brief,
                 copy=copy,
-                product_image=product_image,
-                previous_bottom_strip=previous_bottom_strip,
+                product_image=primary_ref,
+                previous_bottom_strip=previous_seam_ref,
                 prompt_override=custom_prompt,
             )
             if previous_png is not None and self.settings.seam_blend_height > 0:

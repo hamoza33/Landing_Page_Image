@@ -1,18 +1,23 @@
 {% include "_shared.j2" %}
 
-SECTION 2 — FEATURES
+SECTION 2 - FEATURES
 ====================
-Role: Showcase up to {{ copy.features.items|length }} core features of the
-product through visual vignettes around it.
+Role: Showcase {{ copy.features.items|length }} core features through
+visual vignettes around the product.
 
 Scene:
   - The product (ref #1) anchored at center.
-  - Around it, {{ copy.features.items|length }} small contextual vignettes
-    or icon-like illustrations representing each feature.
+  - {{ copy.features.items|length }} small contextual vignettes or
+    icon-style illustrations arranged around it, each representing one
+    feature.
   - Clean premium catalog vibe, soft drop shadows, breathing room.
-  - Reserve vertical bands to the side of each vignette where a short
-    feature label can be overlaid as text afterward.
+  - Each vignette has a calm panel beside it for its label.
 
-Feature labels (DO NOT draw text — leave clear, calm zones for them):
-{% for f in copy.features.items %}  - {{ loop.index }}. {{ f.title }} — {{ f.description }}
+Arabic text to render on the image (RTL, correctly connected letterforms):
+  - HEADLINE (top, large, bold):
+    {{ copy.features.headline|jsafe }}
+  - FEATURE LABELS (each next to its matching vignette, medium weight,
+    title bigger than description):
+{% for f in copy.features.items %}    {{ loop.index }}. TITLE: {{ f.title|jsafe }}
+       DESCRIPTION: {{ f.description|jsafe }}
 {% endfor %}

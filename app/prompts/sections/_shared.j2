@@ -1,38 +1,48 @@
-{# Shared visual contract — included at the top of every section prompt. #}
-You are creating section {{ section_number }} of 8 of a VERTICAL portrait
-landing-page banner for {{ brief.name }}{% if brief.brand %} by {{ brief.brand }}{% endif %}.
+{# Shared visual contract included at the top of every section prompt.
+   Everything must stay JSON-safe: no unescaped double quotes, no curly
+   quotes, no em-dash. The `jsafe` filter sanitizes any user-derived text. #}
+You are creating section {{ section_number }} of 8 of a vertical portrait
+landing-page banner for {{ brief.name|jsafe }}{% if brief.brand %} by {{ brief.brand|jsafe }}{% endif %}.
 
-Subject (must appear, photoreal, visually integrated into the scene):
-  - {{ brief.name }} ({{ brief.category }}{% if brief.sub_category %} / {{ brief.sub_category }}{% endif %})
-  - The product packaging in reference image #1 is the EXACT subject — keep
+Subject (must appear, photoreal, integrated into the scene):
+  - {{ brief.name|jsafe }} ({{ brief.category|jsafe }}{% if brief.sub_category %} / {{ brief.sub_category|jsafe }}{% endif %})
+  - The product packaging in reference image #1 is the EXACT subject. Keep
     its label, colors, shape, and proportions faithful.
 
 Visual identity:
-  - Palette: {{ palette_str }}.
-  - Mood: {{ style_keywords }}.
+  - Palette: {{ palette_str|jsafe }}.
+  - Mood: {{ style_keywords|jsafe }}.
   - Editorial GCC (Khaleeji) aesthetic. Warm, premium, modern.
-  - NO embedded text, NO logos other than the product's own, NO watermarks.
-  - NO flat solid-color backgrounds — always rich texture, depth, gradients.
+  - Rich texture, depth, gradients. Never a flat solid-color background.
 
-Composition: 1024×1536 portrait, 2:3 ratio. {{ section_role }}
+Composition: 1024x1536 portrait, 2:3 ratio. {{ section_role|jsafe }}
 
 {% if seamless_top %}
 SEAMLESS TOP EDGE (critical):
-  Reference image #2 is the BOTTOM strip of the PREVIOUS section. The TOP
+  Reference image #2 is the bottom strip of the previous section. The TOP
   edge of THIS image MUST visually continue from that strip: same dominant
-  colors at the top, matching texture and lighting, so when stacked the seam
-  is invisible. Treat reference #2 as the literal pixels that sit above the
-  top of your canvas.
+  colors at the top, matching texture and lighting, so when the two images
+  are stacked vertically the seam is invisible. Treat reference #2 as the
+  literal pixels that sit directly above the top of your canvas.
 {% else %}
 SEAMLESS TOP EDGE:
-  This is section 1 — the top of the image sets the visual tone for the
-  entire page. Make the top edge a clean, branded gradient/texture that
+  This is section 1. The top of the image sets the visual tone for the
+  entire page. Make the top edge a clean branded gradient or texture that
   the next section can pick up.
 {% endif %}
 
 SEAMLESS BOTTOM EDGE:
-  Leave the BOTTOM ~20% of the image as a calm gradient or texture (no
-  prominent subject, no text region), so the next section's top edge can
-  blend in cleanly.
+  Leave the bottom 256 px as a calm gradient or texture (no prominent
+  subject), so the next section can blend in cleanly. Keep that strip free
+  of text.
 
-Save the bottom 256 px for the seam — keep it visually quiet.
+Arabic text rendering (REQUIRED):
+  You MUST render the Arabic text listed below directly on the image. Use
+  proper right-to-left layout, correctly connected Arabic letterforms, and
+  a clear modern Arabic typeface (think Tajawal Bold or similar Khaleeji
+  style). Headlines large and confident, supporting text smaller, the CTA
+  inside a contrasting solid pill or bar at the bottom for instant
+  scannability. Position each text block in its named zone, against a
+  semi-transparent panel or natural negative space so it stays legible.
+  Do not invent extra text. Do not transliterate. Do not add English copy.
+  Only the exact Arabic strings provided below.

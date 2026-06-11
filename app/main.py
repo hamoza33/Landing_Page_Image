@@ -115,6 +115,7 @@ async def settings_view(request: Request) -> HTMLResponse:
             ("OUTPUT_DIR", str(settings.output_dir)),
             ("UPLOAD_DIR", str(settings.upload_dir)),
             ("ASSETS_DIR", str(settings.assets_dir)),
+            ("PUBLIC_BASE_URL", settings.public_base_url),
         ]),
     ]
     apis = [

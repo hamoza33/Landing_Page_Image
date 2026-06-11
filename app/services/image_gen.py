@@ -74,6 +74,10 @@ class ImageGenerator:
             trim_blocks=True,
             lstrip_blocks=True,
         )
+        # JSON-safe text filter: strip control chars, replace double quotes
+        # with apostrophes, replace curly quotes / em-dashes with ASCII so the
+        # rendered prompt round-trips cleanly through any JSON parser.
+        self._jinja.filters["jsafe"] = _jsafe
 
     # ----------------------------------------------------------- public API
 
@@ -105,8 +109,8 @@ class ImageGenerator:
         index: int,
         brief: ProductBrief,
         copy: LandingCopy,
-        product_image: bytes,
-        previous_bottom_strip: bytes | None = None,
+        product_image: bytes | str,
+        previous_bottom_strip: bytes | str | None = None,
         prompt_override: str | None = None,
     ) -> tuple[str, bytes]:
         """Render a single section. Returns ``(prompt_used, normalized_png_bytes)``.
@@ -114,6 +118,11 @@ class ImageGenerator:
         ``product_image`` is mandatory — every section uses it as ref #1.
         ``previous_bottom_strip`` (optional) is passed as ref #2 to enforce
         seamless top continuation with the previous section.
+
+        Both arguments accept either ``bytes`` (will be base64-encoded) or a
+        ``str`` URL the model can fetch. URLs are preferred because the model
+        renders Arabic text more reliably when it can see real reference
+        pixels rather than a chunked base64 blob.
         """
 
         seamless_top = previous_bottom_strip is not None
@@ -125,7 +134,7 @@ class ImageGenerator:
             seamless_top=seamless_top,
         )
 
-        refs: list[bytes] = [product_image]
+        refs: list[bytes | str] = [product_image]
         if previous_bottom_strip is not None:
             refs.append(previous_bottom_strip)
 
@@ -139,9 +148,10 @@ class ImageGenerator:
                 fmt=self.settings.image_format,
             )
         except YunwuError as exc:
-            # Fall back to single-reference if the edit endpoint chokes on
-            # multi-image — keeps the pipeline alive.
-            log.warning("image_edit failed with %d refs (%s); retrying with product only.", len(refs), exc)
+            log.warning(
+                "image_edit failed with %d refs (%s); retrying with product only.",
+                len(refs), exc,
+            )
             images = await self.client.image_edit(
                 prompt=prompt,
                 size=size,
@@ -160,6 +170,39 @@ class ImageGenerator:
 
 
 # ---------------------------------------------------------------- seam helpers
+
+
+# Characters that are valid JSON but tend to break naive parsers or look
+# wrong when rendered by gpt-image-2-all. We swap them for ASCII equivalents
+# in any user-supplied copy that flows into the prompt body.
+_JSAFE_TRANSLATIONS = {
+    ord('"'): "'",       # double quote -> single
+    0x201C: "'",         # left double curly quote
+    0x201D: "'",         # right double curly quote
+    0x2018: "'",         # left single curly quote
+    0x2019: "'",         # right single curly quote
+    0x2014: "-",         # em dash
+    0x2013: "-",         # en dash
+    0x2026: "...",       # ellipsis
+    ord("\\"): "/",      # backslash -> forward slash
+    ord("\r"): " ",
+    ord("\t"): " ",
+}
+
+
+def _jsafe(value) -> str:
+    """Return ``value`` as a JSON-safe single-line string.
+
+    * Strips control characters except ``\\n``.
+    * Replaces double quotes, smart quotes, em/en dashes, ellipsis, backslash.
+    * Coerces any non-string to ``str()``.
+    """
+
+    s = "" if value is None else str(value)
+    s = s.translate(_JSAFE_TRANSLATIONS)
+    # Drop any remaining C0 control characters except newline.
+    s = "".join(ch for ch in s if ch == "\n" or ord(ch) >= 0x20)
+    return s
 
 
 def extract_bottom_strip(png_bytes: bytes, *, strip_height: int) -> bytes:

@@ -1,18 +1,24 @@
 {% include "_shared.j2" %}
 
-SECTION 5 — FAQ
+SECTION 5 - FAQ
 ===============
-Role: An informative, calm panel that visually reads as "answers".
+Role: An informative calm panel that visually reads as 'questions answered'.
 
 Scene:
-  - A reading-room mood: soft beige / warm gradient background.
-  - The product (ref #1) in the lower-third, small but recognizable.
-  - Upper two-thirds: an open, uncluttered area with subtle illustrative
-    motifs (soft circles, dotted lines, gentle paper texture) that suggest
-    "questions answered" without rendering literal Q&A boxes.
-  - Reserve {{ copy.faq.items|length }} stacked horizontal strips for FAQ
-    text to be overlaid on top later.
+  - Reading-room mood: soft beige and warm gradient background.
+  - The product (ref #1) sits in the lower third, small but recognizable.
+  - Upper two thirds: open, uncluttered area with subtle illustrative
+    motifs (soft circles, dotted lines, gentle paper texture). No literal
+    speech bubbles.
+  - Layout reserves {{ copy.faq.items|length }} stacked semi-transparent
+    panels for the Q and A pairs.
 
-FAQ list (overlay zone reference only — DO NOT draw text):
-{% for q in copy.faq.items %}  - س: {{ q.question }} — ج: {{ q.answer }}
+Arabic text to render on the image (RTL, correctly connected letterforms):
+  - HEADLINE (top, large, bold):
+    {{ copy.faq.headline|jsafe }}
+  - Q AND A LIST (each pair inside its own panel, the question prefixed
+    with the Arabic letter for question, the answer prefixed with the
+    Arabic letter for answer):
+{% for q in copy.faq.items %}    {{ loop.index }}. QUESTION: {{ q.question|jsafe }}
+       ANSWER: {{ q.answer|jsafe }}
 {% endfor %}

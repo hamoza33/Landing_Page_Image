@@ -1,20 +1,23 @@
 {% include "_shared.j2" %}
 
-SECTION 3 — BEFORE / AFTER
+SECTION 3 - BEFORE / AFTER
 ==========================
-Role: A tasteful, non-medical visual comparison.
+Role: A tasteful non-medical visual comparison.
 
 Scene:
-  - Top half: a "before" mood representing "{{ copy.before_after.before }}".
-    Cooler / muted color treatment, no negative imagery, suggested through
-    color and texture only.
-  - Bottom half: an "after" mood representing "{{ copy.before_after.after }}".
+  - Top half is a 'before' mood representing: {{ copy.before_after.before|jsafe }}.
+    Cooler and muted color treatment, never negative imagery, suggested
+    only through color and texture.
+  - Bottom half is an 'after' mood representing: {{ copy.before_after.after|jsafe }}.
     Warmer, brighter, with the product (ref #1) clearly visible as the
     transformative element.
-  - Divider: a soft visual transition (gradient band, particles, or curve)
-    — NEVER a hard horizontal split line.
-  - Reserve a calm zone near the middle for an overlay headline.
+  - Divider between the halves is a soft visual transition (gradient band,
+    particles, or curve). Never a hard horizontal split line.
 
-Mood cue:
-  - Before: {{ copy.before_after.before }}
-  - After: {{ copy.before_after.after }}
+Arabic text to render on the image (RTL, correctly connected letterforms):
+  - HEADLINE (centered across the divider, large, bold):
+    {{ copy.before_after.headline|jsafe }}
+  - LEFT/TOP LABEL (next to the before half, medium):
+    {{ copy.before_after.before|jsafe }}
+  - RIGHT/BOTTOM LABEL (next to the after half, medium, slightly bolder):
+    {{ copy.before_after.after|jsafe }}

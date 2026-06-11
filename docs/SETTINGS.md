@@ -103,11 +103,16 @@ All defaults shown apply when the variable is unset.
 | `SEAM_STRIP_HEIGHT` | `256` | Pixels taken from the bottom of section N to seed section N+1. |
 | `SEAM_BLEND_HEIGHT` | `96` | Pixels of PIL alpha-blend at the join (belt-and-suspenders pass after the model render). Set to `0` to disable. |
 
-### 2.5 Text Overlay (Arabic on image)
+### 2.5 Text Overlay (Arabic on image — fallback only)
+
+`gpt-image-2-all` now renders the Arabic text directly on each section
+image (driven by the per-section prompts in `app/prompts/sections/*.j2`).
+The PIL overlay below stays available as a fallback if you ever want
+pixel-perfect typography that you control character-by-character.
 
 | Var | Default | Description |
 | --- | --- | --- |
-| `OVERLAY_TEXT_ENABLED` | `true` | Master switch. If false, raw model output is saved without text. |
+| `OVERLAY_TEXT_ENABLED` | `false` | Master switch. Set to `true` to draw PIL text on top of the model's output. |
 | `FONT_ARABIC_REGULAR` | `assets/fonts/NotoNaskhArabic-Regular.ttf` | Body / regular weight. |
 | `FONT_ARABIC_BOLD` | `assets/fonts/Tajawal-Bold.ttf` | Headlines / CTAs. |
 | `OVERLAY_HEADLINE_SIZE` | `96` | px. Used for `headline` and `cta` blocks. |
@@ -134,6 +139,7 @@ All defaults shown apply when the variable is unset.
 | `OUTPUT_DIR` | `./output` | Per-job folder root. |
 | `UPLOAD_DIR` | `./uploads` | Original product photos. |
 | `ASSETS_DIR` | `./assets` | Fonts and other static assets. |
+| `PUBLIC_BASE_URL` | `https://landing.shopinzo.bond` | Public base URL of this service. Uploaded product photos and per-section seam strips are exposed as `<PUBLIC_BASE_URL>/files/<job-id>/...` so `gpt-image-2-all` can fetch them directly as URL references. Must be reachable from Yunwu's servers. |
 | `HTTP_TIMEOUT` | `600` | Seconds. Image-edit calls can routinely take 4–8 minutes per section. |
 
 ---

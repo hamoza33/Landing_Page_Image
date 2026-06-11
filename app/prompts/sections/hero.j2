@@ -1,24 +1,24 @@
 {% include "_shared.j2" %}
 
-SECTION 1 — HERO
+SECTION 1 - HERO
 ================
-Role: Establish the product as the desirable hero. This is the strongest
-brand impression of the whole page.
+Role: Establish the product as the desirable hero. Strongest brand
+impression of the whole page.
 
 Scene:
-  - The product (ref #1) placed center-frame as a clear, photorealistic
-    hero subject, slightly larger-than-life.
-  - Dramatic editorial lighting with a soft halo / glow behind the product.
-  - Background: an aspirational environment that matches the category
-    ({{ brief.category }}) — think premium spa-like, soft fabrics, glass,
-    polished stone, or warm minimal interior, never literal supermarket
-    shelves.
-  - Empty negative space at the TOP-LEFT region for the headline overlay.
-  - Empty negative space at the BOTTOM for the CTA overlay.
+  - The product (ref #1) center-frame, photorealistic, slightly larger
+    than life.
+  - Editorial soft halo or glow behind the product.
+  - Aspirational background matching the category ({{ brief.category|jsafe }}):
+    spa-like surfaces, soft fabrics, glass, polished stone, warm minimal
+    interior. Never literal supermarket shelves.
+  - Reserve a calm zone in the upper third for the headline overlay and
+    a calm zone at the bottom for the CTA pill.
 
-Copy overlay zones (DO NOT draw text — just keep these regions visually calm):
-  - Top: headline "{{ copy.hero.headline }}"
-  - Below top: subhead "{{ copy.hero.subhead }}"
-  - Bottom strip: CTA "{{ copy.hero.cta }}"
-
-Mood cue: "{{ copy.hero.headline }} — {{ copy.hero.subhead }}"
+Arabic text to render on the image (RTL, correctly connected letterforms):
+  - HEADLINE (top third, very large, bold):
+    {{ copy.hero.headline|jsafe }}
+  - SUBHEAD (just below the headline, medium weight):
+    {{ copy.hero.subhead|jsafe }}
+  - CTA (bottom, inside a contrasting solid pill or bar):
+    {{ copy.hero.cta|jsafe }}

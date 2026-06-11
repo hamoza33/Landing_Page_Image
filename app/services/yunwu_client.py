@@ -162,7 +162,7 @@ class YunwuClient:
         *,
         prompt: str,
         size: str,
-        reference_images: list[bytes],
+        reference_images: list[bytes | str],
         model: str | None = None,
         quality: str = "high",
         fmt: str = "png",
@@ -170,12 +170,28 @@ class YunwuClient:
     ) -> list[bytes]:
         """Image edit / multi-image route (``gpt-image-2-all``).
 
-        Reference images are sent as base64 strings under the ``image`` field,
-        matching the Yunwu/OpenAI image-edit JSON shape.
+        ``reference_images`` accepts either:
+          * ``str`` — a public URL the model can fetch directly. Preferred
+            because it lets gpt-image-2-all do the right rendering with
+            in-image text. The URL must be reachable from Yunwu's servers.
+          * ``bytes`` — raw image bytes; we base64-encode them. Fallback for
+            when no public URL exists (e.g. tests).
+
+        Mixed lists are fine; URLs and base64 strings can coexist in
+        ``image: [...]``.
         """
 
         url = f"{self.settings.yunwu_base_url}/v1/images/generations"
-        encoded = [base64.b64encode(b).decode("ascii") for b in reference_images]
+        encoded: list[str] = []
+        for ref in reference_images:
+            if isinstance(ref, str):
+                encoded.append(ref)
+            elif isinstance(ref, (bytes, bytearray)):
+                encoded.append(base64.b64encode(bytes(ref)).decode("ascii"))
+            else:
+                raise TypeError(
+                    f"reference_images entries must be str or bytes, got {type(ref).__name__}"
+                )
         payload = {
             "model": model or self.settings.image_edit_model,
             "prompt": prompt,
