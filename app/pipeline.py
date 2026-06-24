@@ -76,8 +76,10 @@ class Pipeline:
         copy_path.write_text(copy.model_dump_json(indent=2), encoding="utf-8")
         job.copy_path = str(copy_path)
 
-        await _progress("generating 8 section images")
-        sections = await self.image_gen.generate_all(brief, copy, product_image=image_bytes)
+        await _progress("generating section 1 of 8: hero")
+        sections = await self.image_gen.generate_all(
+            brief, copy, product_image=image_bytes, progress=_progress
+        )
         section_paths: list[str] = []
         for sec in sections:
             fname = SECTION_FILENAMES.get(sec.key, f"section_{sec.index + 1}_{sec.key}.png")

@@ -60,6 +60,33 @@ STEP_PROGRESS = {
     "complete": 100,
 }
 
+# Prefix-based progress for sequential image generation steps
+STEP_PROGRESS_PREFIXES = [
+    ("generating section 1 of 8", 40),
+    ("generating section 2 of 8", 45),
+    ("generating section 3 of 8", 50),
+    ("generating section 4 of 8", 55),
+    ("generating section 5 of 8", 60),
+    ("generating section 6 of 8", 65),
+    ("generating section 7 of 8", 70),
+    ("generating section 8 of 8", 75),
+]
+
+
+def _get_step_progress(step: str) -> int:
+    """Return progress percentage for a given step string.
+
+    Supports both exact matches and prefix-based matches for sequential
+    image generation steps like 'generating section N of 8: key'.
+    """
+    exact = STEP_PROGRESS.get(step)
+    if exact is not None:
+        return exact
+    for prefix, progress in STEP_PROGRESS_PREFIXES:
+        if step.startswith(prefix):
+            return progress
+    return 50
+
 
 # ─────────────────────────────────────────────────────────────── Public Routes
 
@@ -71,13 +98,20 @@ async def healthz() -> dict[str, str]:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    ui_settings = get_setting("ui") or {}
+    """Serve the SPA dashboard page.
+
+    Only non-sensitive UI settings are passed to the template context.
+    Sensitive data (API keys, credentials) is fetched client-side via
+    the authenticated /admin/api/settings endpoint after login.
+    """
+    all_settings = load_settings()
+    ui_settings = all_settings.get("ui", {})
+
     return templates.TemplateResponse(
         request,
-        "index.html",
+        "spa.html",
         {
-            "show_api_icons": ui_settings.get("show_api_icons", True),
-            "api_icons": ui_settings.get("api_icons_config", {}),
+            "settings": _make_dot_dict({"ui": ui_settings}),
         },
     )
 
@@ -208,16 +242,15 @@ async def job_view(request: Request, job_id: str) -> HTMLResponse:
 # ─────────────────────────────────────────────────────────── Jobs History
 
 
-@app.get("/jobs", response_class=HTMLResponse)
-async def jobs_list(request: Request) -> HTMLResponse:
-    """Show all jobs with their status and progress."""
+def _build_jobs_list() -> list[dict]:
+    """Build the jobs list with progress for both HTML and JSON endpoints."""
     jobs_with_progress = []
     for job in reversed(list(_JOBS.values())):  # newest first
-        progress = STEP_PROGRESS.get(job.step, 50)
+        progress = _get_step_progress(job.step)
         if job.status == "done":
             progress = 100
         elif job.status == "error":
-            progress = STEP_PROGRESS.get(job.step, 50)
+            progress = _get_step_progress(job.step)
         jobs_with_progress.append({
             "id": job.id,
             "status": job.status,
@@ -225,10 +258,16 @@ async def jobs_list(request: Request) -> HTMLResponse:
             "error": job.error,
             "progress": progress,
         })
+    return jobs_with_progress
+
+
+@app.get("/jobs", response_class=HTMLResponse)
+async def jobs_list(request: Request) -> HTMLResponse:
+    """Show all jobs with their status and progress."""
     return templates.TemplateResponse(
         request,
         "jobs.html",
-        {"jobs": jobs_with_progress},
+        {"jobs": _build_jobs_list()},
     )
 
 
@@ -245,11 +284,22 @@ async def admin_login_page(request: Request) -> HTMLResponse:
 
 @app.post("/admin/login")
 async def admin_login(request: Request, username: str = Form(...), password: str = Form(...)):
+    accept = request.headers.get("accept", "")
+    wants_json = "application/json" in accept
+
     if verify_credentials(username, password):
         token = create_session(username)
-        response = RedirectResponse(url="/admin/dashboard", status_code=302)
+        if wants_json:
+            response = JSONResponse({"success": True, "error": None})
+        else:
+            response = RedirectResponse(url="/admin/dashboard", status_code=302)
         set_session_cookie(response, token)
         return response
+
+    if wants_json:
+        return JSONResponse(
+            {"success": False, "error": "اسم المستخدم أو كلمة المرور غير صحيحة"}
+        )
     return templates.TemplateResponse(
         request,
         "login.html",
@@ -299,7 +349,61 @@ async def admin_dashboard(request: Request) -> HTMLResponse:
     )
 
 
+# ─────────────────────────────────────────────────────── Admin JSON API
+
+
+@app.get("/admin/api/status")
+async def admin_api_status(request: Request) -> JSONResponse:
+    """Return authentication status as JSON."""
+    session = verify_session(request)
+    if session:
+        return JSONResponse({"authenticated": True, "username": session["username"]})
+    return JSONResponse({"authenticated": False, "username": None})
+
+
+@app.get("/admin/api/jobs")
+async def admin_api_jobs(request: Request) -> JSONResponse:
+    """Return all jobs as JSON for the SPA."""
+    redirect = require_auth(request)
+    if redirect:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    return JSONResponse(_build_jobs_list())
+
+
 # ─────────────────────────────────────────────────────── Admin Settings API
+
+
+@app.get("/admin/api/settings")
+async def admin_api_get_settings(request: Request) -> JSONResponse:
+    """Return full settings JSON (including secrets) to authenticated users only."""
+    redirect = require_auth(request)
+    if redirect:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    all_settings = load_settings()
+
+    # Load default prompts from files for display
+    prompts_dir = BASE_DIR / "prompts"
+    default_copy = ""
+    default_analyzer = ""
+    try:
+        default_copy = (prompts_dir / "copy_system_ar.txt").read_text(encoding="utf-8")
+    except OSError:
+        pass
+    try:
+        from app.services.analyzer import ANALYZER_INSTRUCTIONS
+        default_analyzer = ANALYZER_INSTRUCTIONS
+    except ImportError:
+        pass
+
+    return JSONResponse({
+        "settings": all_settings,
+        "default_prompts": {
+            "copy_system_ar": default_copy,
+            "analyzer_instructions": default_analyzer,
+        },
+    })
 
 
 @app.post("/admin/api/settings/api")
