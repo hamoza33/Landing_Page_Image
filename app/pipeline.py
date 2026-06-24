@@ -37,7 +37,8 @@ class Pipeline:
     """One-shot orchestrator. Each call processes a single product image."""
 
     def __init__(self, settings: Settings | None = None):
-        self.settings = settings or default_settings
+        # Always use live settings (dashboard overrides) for pipeline runs
+        self.settings = Settings.load_live()
         self.client = YunwuClient(self.settings)
         self.analyzer = ProductAnalyzer(client=self.client, settings=self.settings)
         self.writer = CopyWriter(client=self.client, settings=self.settings)
