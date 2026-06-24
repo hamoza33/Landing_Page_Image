@@ -127,7 +127,7 @@ async def generate_from_url(
 
     # Download the image
     try:
-        async with httpx.AsyncClient(timeout=30.0) as client:
+        async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
             resp = await client.get(image_url)
             resp.raise_for_status()
     except Exception as exc:
