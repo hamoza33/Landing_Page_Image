@@ -34,7 +34,9 @@ log = logging.getLogger(__name__)
 
 
 # Sections that benefit from anchoring on the user's actual product photo.
-EDIT_SECTIONS = {"hero", "lifestyle"}
+# Disabled: Yunwu /v1/images/generations doesn't support 'image' param for edits.
+# All sections use regular generation with strong prompt guidance instead.
+EDIT_SECTIONS: set = set()  # Was {"hero", "lifestyle"}
 
 # Yunwu preset that's known-good as a fallback when 1024x3072 is rejected.
 FALLBACK_SIZE = "1024x1536"
