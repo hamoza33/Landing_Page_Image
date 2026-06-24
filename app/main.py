@@ -1,7 +1,7 @@
 """FastAPI entry point.
 
 Single-page upload form, background job runner, status / result page,
-admin dashboard with settings management.
+admin dashboard with settings management, jobs history.
 """
 
 from __future__ import annotations
@@ -38,7 +38,7 @@ from app.settings_store import (
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
 log = logging.getLogger("app")
 
-app = FastAPI(title="Landing Page Generator", version="0.2.0")
+app = FastAPI(title="Landing Page Generator", version="0.3.0")
 
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -49,6 +49,16 @@ app.mount("/files", StaticFiles(directory=str(settings.output_dir)), name="files
 
 _JOBS: dict[str, JobRecord] = {}
 _JOBS_LOCK = asyncio.Lock()
+
+# Step progress mapping
+STEP_PROGRESS = {
+    "queued": 5,
+    "analyzing product image": 15,
+    "generating Arabic copy": 35,
+    "generating 8 section images": 55,
+    "stitching final long image": 85,
+    "complete": 100,
+}
 
 
 # ─────────────────────────────────────────────────────────────── Public Routes
@@ -154,7 +164,8 @@ async def _run_job(job_id: str, image_bytes: bytes, mime: str) -> None:
     record = _JOBS.get(job_id)
     if record is None:
         return
-    pipeline = Pipeline(settings)
+    # Pipeline uses live settings (reads from dashboard JSON)
+    pipeline = Pipeline()
     try:
         await pipeline.run(job=record, image_bytes=image_bytes, mime=mime)
     except Exception as exc:  # noqa: BLE001 — surface any failure to the user
@@ -191,6 +202,33 @@ async def job_view(request: Request, job_id: str) -> HTMLResponse:
             "copy_url": _file_url(record.copy_path),
             "brief_url": _file_url(record.brief_path),
         },
+    )
+
+
+# ─────────────────────────────────────────────────────────── Jobs History
+
+
+@app.get("/jobs", response_class=HTMLResponse)
+async def jobs_list(request: Request) -> HTMLResponse:
+    """Show all jobs with their status and progress."""
+    jobs_with_progress = []
+    for job in reversed(list(_JOBS.values())):  # newest first
+        progress = STEP_PROGRESS.get(job.step, 50)
+        if job.status == "done":
+            progress = 100
+        elif job.status == "error":
+            progress = STEP_PROGRESS.get(job.step, 50)
+        jobs_with_progress.append({
+            "id": job.id,
+            "status": job.status,
+            "step": job.step,
+            "error": job.error,
+            "progress": progress,
+        })
+    return templates.TemplateResponse(
+        request,
+        "jobs.html",
+        {"jobs": jobs_with_progress},
     )
 
 
