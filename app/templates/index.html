@@ -5,47 +5,259 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>مولّد صفحة الهبوط</title>
   <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .input-methods {
+      display: flex;
+      gap: 0;
+      margin-bottom: 16px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .input-method-tab {
+      padding: 10px 20px;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--muted);
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      transition: all 0.2s;
+    }
+    .input-method-tab:hover {
+      color: var(--accent-strong);
+    }
+    .input-method-tab.active {
+      color: var(--accent-strong);
+      border-bottom-color: var(--accent);
+    }
+    .input-panel {
+      display: none;
+    }
+    .input-panel.active {
+      display: block;
+    }
+    .url-input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 1rem;
+      background: var(--bg);
+      direction: ltr;
+      text-align: left;
+    }
+    .url-input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .url-hint {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+    .api-icons {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid #f0f0f0;
+    }
+    .api-icons span {
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .api-icon {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #f3f4f6;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .api-icon .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+    .time-estimate {
+      margin-top: 12px;
+      padding: 10px 14px;
+      background: #f0fdf4;
+      border: 1px solid #bbf7d0;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      color: #166534;
+      display: none;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 6px;
+      background: #e5e7eb;
+      border-radius: 3px;
+      margin-top: 10px;
+      overflow: hidden;
+      display: none;
+    }
+    .progress-bar .fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      transition: width 0.5s ease;
+      width: 0%;
+    }
+    .admin-link {
+      position: fixed;
+      bottom: 16px;
+      left: 16px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-decoration: none;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+    .admin-link:hover {
+      opacity: 1;
+    }
+  </style>
 </head>
 <body>
   <main class="container">
     <h1>مولّد صفحة الهبوط</h1>
-    <p class="lede">ارفع صورة المنتج، وسنُنشئ لك صفحة هبوط عربية كاملة بصورة طويلة واحدة جاهزة للاستخدام في السوق الخليجي.</p>
+    <p class="lede">ارفع صورة المنتج أو ألصق رابطها، وسنُنشئ لك صفحة هبوط عربية كاملة بصورة طويلة واحدة جاهزة للاستخدام في السوق الخليجي.</p>
 
-    <form id="upload-form" enctype="multipart/form-data" class="card">
-      <label for="image" class="file-label">اختر صورة المنتج</label>
-      <input type="file" name="image" id="image" accept="image/*" required />
-      <button type="submit" class="primary">إنشاء الصفحة</button>
-    </form>
+    <div class="card">
+      <div class="input-methods">
+        <button class="input-method-tab active" data-method="upload">رفع صورة</button>
+        <button class="input-method-tab" data-method="url">لصق رابط صورة</button>
+      </div>
+
+      <form id="upload-form" enctype="multipart/form-data">
+        <div class="input-panel active" id="panel-upload">
+          <label for="image" class="file-label">اختر صورة المنتج</label>
+          <input type="file" name="image" id="image" accept="image/*" />
+        </div>
+
+        <div class="input-panel" id="panel-url">
+          <label class="file-label">رابط الصورة</label>
+          <input type="text" id="image-url" class="url-input" placeholder="https://example.com/product.jpg" />
+          <div class="url-hint">ألصق رابط صورة مباشر (jpg, png, webp)</div>
+        </div>
+
+        <button type="submit" class="primary" style="margin-top:16px; width:100%;">إنشاء الصفحة</button>
+      </form>
+
+      {% if show_api_icons %}
+      <div class="api-icons">
+        <span>مدعوم بـ:</span>
+        {% for key, icon in api_icons.items() %}
+          {% if icon.visible %}
+          <div class="api-icon"><span class="dot"></span> {{ icon.label }}</div>
+          {% endif %}
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
 
     <section id="status" class="status hidden">
       <h2>الحالة</h2>
       <p id="status-text">قيد الإعداد…</p>
-      <a id="view-link" class="link" href="#" target="_blank" rel="noopener">عرض النتيجة</a>
+      <div class="progress-bar" id="progress-bar">
+        <div class="fill" id="progress-fill"></div>
+      </div>
+      <div class="time-estimate" id="time-estimate"></div>
+      <a id="view-link" class="link" href="#" target="_blank" rel="noopener" style="display:none; margin-top:12px;">عرض النتيجة</a>
     </section>
   </main>
 
+  <a href="/admin/login" class="admin-link">لوحة التحكم</a>
+
   <script>
+    // Input method tabs
+    document.querySelectorAll('.input-method-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.input-method-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.input-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.method).classList.add('active');
+      });
+    });
+
     const form = document.getElementById("upload-form");
     const status = document.getElementById("status");
     const statusText = document.getElementById("status-text");
     const viewLink = document.getElementById("view-link");
+    const progressBar = document.getElementById("progress-bar");
+    const progressFill = document.getElementById("progress-fill");
+    const timeEstimate = document.getElementById("time-estimate");
+
+    // Step-based time estimates (seconds)
+    const STEP_ESTIMATES = {
+      "queued": { progress: 5, eta: "~2-3 دقائق" },
+      "analyzing product image": { progress: 15, eta: "~2 دقيقة" },
+      "generating Arabic copy": { progress: 30, eta: "~1.5 دقيقة" },
+      "generating 8 section images": { progress: 50, eta: "~1 دقيقة" },
+      "stitching final long image": { progress: 85, eta: "~15 ثانية" },
+      "complete": { progress: 100, eta: "مكتمل" },
+    };
+
+    let jobStartTime = null;
 
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
-      const data = new FormData(form);
+      
+      const activePanel = document.querySelector('.input-panel.active');
+      const isUrl = activePanel.id === 'panel-url';
+      
+      let body;
+      let headers = {};
+      
+      if (isUrl) {
+        const url = document.getElementById('image-url').value.trim();
+        if (!url) {
+          alert('الرجاء إدخال رابط الصورة');
+          return;
+        }
+        body = JSON.stringify({ image_url: url });
+        headers['Content-Type'] = 'application/json';
+      } else {
+        const fileInput = document.getElementById('image');
+        if (!fileInput.files.length) {
+          alert('الرجاء اختيار صورة');
+          return;
+        }
+        body = new FormData(form);
+      }
+      
       status.classList.remove("hidden");
-      statusText.textContent = "جارٍ الرفع…";
+      statusText.textContent = "جارٍ الإرسال…";
       viewLink.style.display = "none";
+      progressBar.style.display = "block";
+      progressFill.style.width = "5%";
+      timeEstimate.style.display = "block";
+      timeEstimate.textContent = "الوقت المتوقع: ~2-3 دقائق";
+      jobStartTime = Date.now();
 
-      const res = await fetch("/generate", { method: "POST", body: data });
+      const endpoint = isUrl ? "/generate-url" : "/generate";
+      const fetchOpts = { method: "POST", body };
+      if (headers['Content-Type']) {
+        fetchOpts.headers = headers;
+      }
+
+      const res = await fetch(endpoint, fetchOpts);
       if (!res.ok) {
-        statusText.textContent = "فشل الرفع: " + res.status;
+        statusText.textContent = "فشل الإرسال: " + res.status;
+        progressBar.style.display = "none";
+        timeEstimate.style.display = "none";
         return;
       }
-      const body = await res.json();
-      viewLink.href = body.view_url;
-      viewLink.style.display = "inline-block";
-      poll(body.status_url);
+      const respBody = await res.json();
+      viewLink.href = respBody.view_url;
+      poll(respBody.status_url);
     });
 
     async function poll(url) {
@@ -56,11 +268,27 @@
           return;
         }
         const j = await r.json();
+        const stepInfo = STEP_ESTIMATES[j.step] || { progress: 50, eta: "جارٍ المعالجة..." };
+        
         statusText.textContent = "الخطوة: " + j.step + " — الحالة: " + j.status;
-        if (j.status === "done" || j.status === "error") {
-          if (j.status === "error") {
-            statusText.textContent += " — " + (j.error || "");
-          }
+        progressFill.style.width = stepInfo.progress + "%";
+        
+        // Show elapsed time + estimate
+        const elapsed = Math.round((Date.now() - jobStartTime) / 1000);
+        const elapsedStr = elapsed > 60 ? Math.floor(elapsed/60) + " د " + (elapsed%60) + " ث" : elapsed + " ثانية";
+        timeEstimate.textContent = "الوقت المنقضي: " + elapsedStr + " | المتبقي: " + stepInfo.eta;
+        
+        if (j.status === "done") {
+          progressFill.style.width = "100%";
+          timeEstimate.textContent = "اكتمل في " + elapsedStr;
+          timeEstimate.style.background = "#ecfdf5";
+          viewLink.style.display = "inline-block";
+          return;
+        }
+        if (j.status === "error") {
+          statusText.textContent += " — " + (j.error || "");
+          progressFill.style.background = "#ef4444";
+          timeEstimate.style.display = "none";
           return;
         }
         await new Promise((r) => setTimeout(r, 2000));

@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>تسجيل الدخول - لوحة التحكم</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .login-wrapper {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .login-card {
+      background: var(--card);
+      padding: 40px 36px;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.08);
+      width: 100%;
+      max-width: 400px;
+    }
+    .login-card h1 {
+      text-align: center;
+      margin-bottom: 8px;
+      font-size: 1.6rem;
+    }
+    .login-card .subtitle {
+      text-align: center;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+    .form-group {
+      margin-bottom: 18px;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--ink);
+    }
+    .form-group input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #ddd;
+      border-radius: 10px;
+      font-size: 1rem;
+      background: var(--bg);
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .login-btn {
+      width: 100%;
+      padding: 14px;
+      margin-top: 8px;
+    }
+    .error-msg {
+      background: #fef2f2;
+      color: var(--error);
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-wrapper">
+    <div class="login-card">
+      <h1>لوحة التحكم</h1>
+      <p class="subtitle">مولّد صفحة الهبوط</p>
+      
+      {% if error %}
+      <div class="error-msg">{{ error }}</div>
+      {% endif %}
+      
+      <form method="POST" action="/admin/login">
+        <div class="form-group">
+          <label for="username">اسم المستخدم</label>
+          <input type="text" id="username" name="username" required autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label for="password">كلمة المرور</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="primary login-btn">تسجيل الدخول</button>
+      </form>
+    </div>
+  </div>
+</body>
+</html>
