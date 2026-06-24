@@ -106,39 +106,39 @@
             <h3>إعدادات API الأساسية</h3>
             <div class="field">
               <label for="yunwu_api_key">مفتاح Yunwu API</label>
-              <input type="password" id="yunwu_api_key" value="{{ settings.api.yunwu_api_key }}" />
+              <input type="password" id="yunwu_api_key" value="" />
               <div class="hint">مفتاح API للوصول إلى خدمات Yunwu</div>
             </div>
             <div class="field">
               <label for="yunwu_base_url">عنوان Yunwu الأساسي</label>
-              <input type="text" id="yunwu_base_url" value="{{ settings.api.yunwu_base_url }}" />
+              <input type="text" id="yunwu_base_url" value="" />
             </div>
             <div class="two-col">
               <div class="field">
                 <label for="chat_model">موديل المحادثة</label>
-                <input type="text" id="chat_model" value="{{ settings.api.chat_model }}" />
+                <input type="text" id="chat_model" value="" />
               </div>
               <div class="field">
                 <label for="image_model">موديل الصور</label>
-                <input type="text" id="image_model" value="{{ settings.api.image_model }}" />
+                <input type="text" id="image_model" value="" />
               </div>
             </div>
             <div class="field">
               <label for="image_edit_model">موديل تعديل الصور</label>
-              <input type="text" id="image_edit_model" value="{{ settings.api.image_edit_model }}" />
+              <input type="text" id="image_edit_model" value="" />
             </div>
           </div>
           <div class="settings-card">
             <h3>Google Vision (اختياري)</h3>
             <div class="field">
               <label for="google_vision_api_key">مفتاح Google Vision API</label>
-              <input type="password" id="google_vision_api_key" value="{{ settings.api.google_vision_api_key }}" />
+              <input type="password" id="google_vision_api_key" value="" />
             </div>
             <div class="field">
               <label for="analyzer_backend">محلل الصور المستخدم</label>
               <select id="analyzer_backend">
-                <option value="yunwu" {{ 'selected' if settings.api.analyzer_backend == 'yunwu' }}>Yunwu</option>
-                <option value="google_vision" {{ 'selected' if settings.api.analyzer_backend == 'google_vision' }}>Google Vision</option>
+                <option value="yunwu">Yunwu</option>
+                <option value="google_vision">Google Vision</option>
               </select>
             </div>
           </div>
@@ -152,16 +152,16 @@
             <div class="two-col">
               <div class="field">
                 <label for="image_width">عرض الصورة (بكسل)</label>
-                <input type="number" id="image_width" value="{{ settings.image.image_width }}" min="256" max="4096" step="64" />
+                <input type="number" id="image_width" value="" min="256" max="4096" step="64" />
               </div>
               <div class="field">
                 <label for="section_height">ارتفاع القسم (بكسل)</label>
-                <input type="number" id="section_height" value="{{ settings.image.section_height }}" min="512" max="8192" step="64" />
+                <input type="number" id="section_height" value="" min="512" max="8192" step="64" />
               </div>
             </div>
             <div class="field">
               <label for="image_concurrency">التزامن (عدد الصور المتوازية)</label>
-              <input type="number" id="image_concurrency" value="{{ settings.image.image_concurrency }}" min="1" max="10" />
+              <input type="number" id="image_concurrency" value="" min="1" max="10" />
               <div class="hint">عدد الصور التي تولد في نفس الوقت</div>
             </div>
           </div>
@@ -174,7 +174,7 @@
             <h3>نص نظام كتابة المحتوى (عربي)</h3>
             <div class="field">
               <label for="copy_system_ar">الأمر الأساسي لكاتب النصوص</label>
-              <textarea id="copy_system_ar" dir="rtl">{{ settings.prompts.copy_system_ar or default_prompts.copy_system_ar }}</textarea>
+              <textarea id="copy_system_ar" dir="rtl"></textarea>
               <div class="hint">هذا النص يرسل كـ system prompt عند توليد النصوص التسويقية</div>
             </div>
           </div>
@@ -182,7 +182,7 @@
             <h3>أمر تحليل الصور</h3>
             <div class="field">
               <label for="analyzer_instructions">تعليمات محلل المنتج</label>
-              <textarea id="analyzer_instructions" dir="ltr" style="font-family: monospace; font-size: 0.85rem;">{{ settings.prompts.analyzer_instructions or default_prompts.analyzer_instructions }}</textarea>
+              <textarea id="analyzer_instructions" dir="ltr" style="font-family: monospace; font-size: 0.85rem;"></textarea>
               <div class="hint">تعليمات تحليل صورة المنتج (بالإنجليزية)</div>
             </div>
           </div>
@@ -201,6 +201,8 @@
                 <span class="slider"></span>
               </label>
             </div>
+            <div id="icons-config-container">
+            {% if settings.ui.api_icons_config %}
             {% for key, icon in settings.ui.api_icons_config.items() %}
             <div class="toggle-row">
               <span class="label-text">{{ icon.label }} ({{ key }})</span>
@@ -210,6 +212,8 @@
               </label>
             </div>
             {% endfor %}
+            {% endif %}
+            </div>
           </div>
           <button class="primary save-btn" onclick="saveUI()">حفظ إعدادات الواجهة</button>
         </div>
@@ -220,7 +224,7 @@
             <h3>تغيير بيانات تسجيل الدخول</h3>
             <div class="field">
               <label for="new_username">اسم المستخدم الجديد</label>
-              <input type="text" id="new_username" value="{{ settings.auth.username }}" />
+              <input type="text" id="new_username" value="" />
             </div>
             <div class="field">
               <label for="new_password">كلمة المرور الجديدة</label>
@@ -240,6 +244,14 @@
   <div class="success-toast" id="toast">تم الحفظ بنجاح</div>
 
   <script>
+    // ─── Utility: HTML Escaping ───
+    function escapeHtml(str) {
+      if (!str) return '';
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
     // ─── Auth Check ───
     async function checkAuth() {
       try {
@@ -248,6 +260,7 @@
         if (data.authenticated) {
           document.getElementById('login-section').style.display = 'none';
           document.getElementById('app-section').style.display = 'flex';
+          loadSettings();
           loadJobs();
         } else {
           document.getElementById('login-section').style.display = 'flex';
@@ -256,6 +269,45 @@
       } catch (e) {
         document.getElementById('login-section').style.display = 'flex';
         document.getElementById('app-section').style.display = 'none';
+      }
+    }
+
+    // ─── Load Settings (authenticated) ───
+    async function loadSettings() {
+      try {
+        const res = await fetch('/admin/api/settings');
+        if (!res.ok) return;
+        const data = await res.json();
+        const s = data.settings || {};
+        const defaults = data.default_prompts || {};
+
+        // API settings
+        const api = s.api || {};
+        document.getElementById('yunwu_api_key').value = api.yunwu_api_key || '';
+        document.getElementById('yunwu_base_url').value = api.yunwu_base_url || '';
+        document.getElementById('chat_model').value = api.chat_model || '';
+        document.getElementById('image_model').value = api.image_model || '';
+        document.getElementById('image_edit_model').value = api.image_edit_model || '';
+        document.getElementById('google_vision_api_key').value = api.google_vision_api_key || '';
+        const analyzerSelect = document.getElementById('analyzer_backend');
+        if (api.analyzer_backend) analyzerSelect.value = api.analyzer_backend;
+
+        // Image settings
+        const img = s.image || {};
+        if (img.image_width) document.getElementById('image_width').value = img.image_width;
+        if (img.section_height) document.getElementById('section_height').value = img.section_height;
+        if (img.image_concurrency) document.getElementById('image_concurrency').value = img.image_concurrency;
+
+        // Prompts
+        const prompts = s.prompts || {};
+        document.getElementById('copy_system_ar').value = prompts.copy_system_ar || defaults.copy_system_ar || '';
+        document.getElementById('analyzer_instructions').value = prompts.analyzer_instructions || defaults.analyzer_instructions || '';
+
+        // Credentials (username only)
+        const auth = s.auth || {};
+        if (auth.username) document.getElementById('new_username').value = auth.username;
+      } catch (e) {
+        // Settings load failed silently - forms remain empty
       }
     }
 
@@ -339,6 +391,22 @@
       "complete": { progress: 100, eta: "مكتمل" },
     };
 
+    function getStepEstimate(step) {
+      // Exact match first
+      if (STEP_ESTIMATES[step]) return STEP_ESTIMATES[step];
+      // Prefix match for sequential generation steps
+      if (step.startsWith('generating section 1 of 8')) return { progress: 40, eta: '~2 دقيقة' };
+      if (step.startsWith('generating section 2 of 8')) return { progress: 45, eta: '~1.5 دقيقة' };
+      if (step.startsWith('generating section 3 of 8')) return { progress: 50, eta: '~1.5 دقيقة' };
+      if (step.startsWith('generating section 4 of 8')) return { progress: 55, eta: '~1 دقيقة' };
+      if (step.startsWith('generating section 5 of 8')) return { progress: 60, eta: '~1 دقيقة' };
+      if (step.startsWith('generating section 6 of 8')) return { progress: 65, eta: '~45 ثانية' };
+      if (step.startsWith('generating section 7 of 8')) return { progress: 70, eta: '~30 ثانية' };
+      if (step.startsWith('generating section 8 of 8')) return { progress: 75, eta: '~15 ثانية' };
+      // Fallback
+      return { progress: 50, eta: 'جارٍ المعالجة...' };
+    }
+
     let jobStartTime = null;
 
     document.getElementById('upload-form').addEventListener('submit', async (ev) => {
@@ -395,7 +463,7 @@
         const r = await fetch(url);
         if (!r.ok) { statusText.textContent = 'خطأ في جلب الحالة'; return; }
         const j = await r.json();
-        const stepInfo = STEP_ESTIMATES[j.step] || { progress: 50, eta: 'جارٍ المعالجة...' };
+        const stepInfo = getStepEstimate(j.step);
         statusText.textContent = 'الخطوة: ' + j.step + ' — الحالة: ' + j.status;
         progressFill.style.width = stepInfo.progress + '%';
         const elapsed = Math.round((Date.now() - jobStartTime) / 1000);
@@ -446,7 +514,7 @@
         html += '<td><span class="status-badge status-' + job.status + '">' + statusLabel + '</span></td>';
         html += '<td><span class="step-text">' + job.step + '</span></td>';
         html += '<td><div class="progress-mini"><div class="' + fillClass + '" style="width:' + job.progress + '%"></div></div></td>';
-        html += '<td>' + (job.error ? '<span class="error-text">' + job.error.substring(0, 80) + '</span>' : '—') + '</td>';
+        html += '<td>' + (job.error ? '<span class="error-text">' + escapeHtml(job.error.substring(0, 80)) + '</span>' : '—') + '</td>';
         html += '<td>';
         if (job.status === 'done' || job.status === 'running') {
           html += '<a href="/jobs/' + job.id + '/view" target="_blank" class="view-btn">' + (job.status === 'done' ? 'عرض' : 'متابعة') + '</a>';
