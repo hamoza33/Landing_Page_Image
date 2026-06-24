@@ -1,0 +1,29 @@
+{
+  "id": "FEAT-001",
+  "type": "feat",
+  "description": "Replace multi-page dashboard with a single-page application (SPA-style). Combine login, generate/upload, dashboard settings, and jobs history into one HTML template. Login form shows when unauthenticated; after login, display sidebar navigation with sections: Home/Generate, Jobs History, Settings (API, Image, Prompts, UI, Credentials). All navigation via JavaScript show/hide, no separate page loads.",
+  "status": "in_progress",
+  "steps": [
+    "Create a new template app/templates/spa.html that contains ALL functionality in one page: (1) Login overlay/section shown when not authenticated (2) After login: a sidebar with navigation items (Home/Generate, Jobs History, Settings) (3) Main content area that shows/hides sections based on sidebar selection (4) The Generate section should contain the upload form from index.html with file upload and URL input tabs (5) The Jobs History section shows jobs table with status, progress, and links (6) The Settings section has sub-tabs: API, Image, Prompts, UI, Credentials (from dashboard.html) (7) Include all existing JS logic for form submission, polling, settings save",
+    "Update app/main.py routes: (1) Change GET / to render spa.html, passing both public context and auth status (2) Add a new API endpoint GET /admin/api/status that returns JSON {authenticated: bool, username: str|null} (3) Add GET /admin/api/jobs endpoint that returns jobs list as JSON for the SPA to fetch (4) Keep POST /admin/login but make it return JSON {success: bool, error: str|null} instead of redirect when Accept header contains application/json (5) Keep all existing /admin/api/settings/* endpoints (6) Keep POST /generate and POST /generate-url as they are (7) Remove or keep backward-compatible the old separate page routes",
+    "Update app/static/style.css to include sidebar layout styles, active section highlighting, and responsive design for the single-page layout",
+    "The SPA should: on page load check /admin/api/status, if not authenticated show login form, on successful login reload status and show the full dashboard with sidebar. Jobs section should poll /admin/api/jobs periodically. Generate section uses existing /generate and /generate-url endpoints."
+  ],
+  "acceptance_criteria": [
+    "Opening / in a browser shows the SPA - login form if not authenticated, full dashboard if authenticated",
+    "After login, sidebar shows Home/Generate, Jobs History, Settings sections",
+    "Clicking sidebar items shows/hides the corresponding content sections without page reload",
+    "Generate section allows file upload and URL input, shows progress and results",
+    "Jobs History section shows all jobs with status and progress",
+    "Settings section has all tabs (API, Image, Prompts, UI, Credentials) with save functionality",
+    "python -c 'from app.main import app; print(\"OK\")' succeeds",
+    "python -m pytest -q passes"
+  ],
+  "verification": [
+    "pip install -r requirements.txt",
+    "python -c \"from app.main import app; print('OK')\"",
+    "python -m pytest -q"
+  ],
+  "blocked_reason": null,
+  "findings": ""
+}

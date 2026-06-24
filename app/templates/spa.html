@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>مولّد صفحة الهبوط</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- Login Section -->
+  <div id="login-section" class="login-wrapper" style="display:none;">
+    <div class="login-card">
+      <h1>لوحة التحكم</h1>
+      <p class="subtitle">مولّد صفحة الهبوط</p>
+      <div id="login-error" class="error-msg" style="display:none;"></div>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="username">اسم المستخدم</label>
+          <input type="text" id="username" name="username" required autocomplete="username" />
+        </div>
+        <div class="form-group">
+          <label for="password">كلمة المرور</label>
+          <input type="password" id="password" name="password" required autocomplete="current-password" />
+        </div>
+        <button type="submit" class="primary login-btn">تسجيل الدخول</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Main App (shown after login) -->
+  <div id="app-section" class="spa-layout" style="display:none;">
+    <!-- Sidebar -->
+    <aside class="spa-sidebar">
+      <div class="spa-sidebar-header">
+        <h2>مولّد الصفحات</h2>
+      </div>
+      <nav class="spa-nav">
+        <button class="spa-nav-item active" data-section="generate">الرئيسية / إنشاء</button>
+        <button class="spa-nav-item" data-section="jobs">سجل المشاريع</button>
+        <button class="spa-nav-item" data-section="settings">الإعدادات</button>
+      </nav>
+      <div class="spa-sidebar-footer">
+        <button id="logout-btn" class="btn-logout">تسجيل الخروج</button>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="spa-main">
+      <!-- Generate Section -->
+      <section id="section-generate" class="spa-section active">
+        <h1>إنشاء صفحة هبوط</h1>
+        <p class="lede">ارفع صورة المنتج أو ألصق رابطها، وسننشئ لك صفحة هبوط عربية كاملة.</p>
+        <div class="card">
+          <div class="input-methods">
+            <button class="input-method-tab active" data-method="upload">رفع صورة</button>
+            <button class="input-method-tab" data-method="url">لصق رابط صورة</button>
+          </div>
+          <form id="upload-form" enctype="multipart/form-data">
+            <div class="input-panel active" id="panel-upload">
+              <label for="image" class="file-label">اختر صورة المنتج</label>
+              <input type="file" name="image" id="image" accept="image/*" />
+            </div>
+            <div class="input-panel" id="panel-url">
+              <label class="file-label">رابط الصورة</label>
+              <input type="text" id="image-url" class="url-input" placeholder="https://example.com/product.jpg" />
+              <div class="url-hint">ألصق رابط صورة مباشر (jpg, png, webp)</div>
+            </div>
+            <button type="submit" class="primary" style="margin-top:16px; width:100%;">إنشاء الصفحة</button>
+          </form>
+        </div>
+        <section id="gen-status" class="status hidden">
+          <h2>الحالة</h2>
+          <p id="gen-status-text">قيد الإعداد...</p>
+          <div class="progress-bar" id="gen-progress-bar">
+            <div class="fill" id="gen-progress-fill"></div>
+          </div>
+          <div class="time-estimate" id="gen-time-estimate"></div>
+          <a id="gen-view-link" class="link" href="#" target="_blank" rel="noopener" style="display:none; margin-top:12px;">عرض النتيجة</a>
+        </section>
+      </section>
+
+      <!-- Jobs Section -->
+      <section id="section-jobs" class="spa-section">
+        <h1>سجل المشاريع</h1>
+        <div id="jobs-container">
+          <div class="empty-state">
+            <h3>جارٍ التحميل...</h3>
+          </div>
+        </div>
+      </section>
+
+      <!-- Settings Section -->
+      <section id="section-settings" class="spa-section">
+        <h1>الإعدادات</h1>
+        <div class="tabs">
+          <button class="tab active" data-tab="api">إعدادات API</button>
+          <button class="tab" data-tab="image">أحجام الصور</button>
+          <button class="tab" data-tab="prompts">النصوص والأوامر</button>
+          <button class="tab" data-tab="ui">واجهة المستخدم</button>
+          <button class="tab" data-tab="credentials">بيانات الدخول</button>
+        </div>
+
+        <!-- API Settings Tab -->
+        <div class="tab-panel active" id="panel-api">
+          <div class="settings-card">
+            <h3>إعدادات API الأساسية</h3>
+            <div class="field">
+              <label for="yunwu_api_key">مفتاح Yunwu API</label>
+              <input type="password" id="yunwu_api_key" value="{{ settings.api.yunwu_api_key }}" />
+              <div class="hint">مفتاح API للوصول إلى خدمات Yunwu</div>
+            </div>
+            <div class="field">
+              <label for="yunwu_base_url">عنوان Yunwu الأساسي</label>
+              <input type="text" id="yunwu_base_url" value="{{ settings.api.yunwu_base_url }}" />
+            </div>
+            <div class="two-col">
+              <div class="field">
+                <label for="chat_model">موديل المحادثة</label>
+                <input type="text" id="chat_model" value="{{ settings.api.chat_model }}" />
+              </div>
+              <div class="field">
+                <label for="image_model">موديل الصور</label>
+                <input type="text" id="image_model" value="{{ settings.api.image_model }}" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="image_edit_model">موديل تعديل الصور</label>
+              <input type="text" id="image_edit_model" value="{{ settings.api.image_edit_model }}" />
+            </div>
+          </div>
+          <div class="settings-card">
+            <h3>Google Vision (اختياري)</h3>
+            <div class="field">
+              <label for="google_vision_api_key">مفتاح Google Vision API</label>
+              <input type="password" id="google_vision_api_key" value="{{ settings.api.google_vision_api_key }}" />
+            </div>
+            <div class="field">
+              <label for="analyzer_backend">محلل الصور المستخدم</label>
+              <select id="analyzer_backend">
+                <option value="yunwu" {{ 'selected' if settings.api.analyzer_backend == 'yunwu' }}>Yunwu</option>
+                <option value="google_vision" {{ 'selected' if settings.api.analyzer_backend == 'google_vision' }}>Google Vision</option>
+              </select>
+            </div>
+          </div>
+          <button class="primary save-btn" onclick="saveAPI()">حفظ إعدادات API</button>
+        </div>
+
+        <!-- Image Settings Tab -->
+        <div class="tab-panel" id="panel-image">
+          <div class="settings-card">
+            <h3>أحجام الصور المولدة</h3>
+            <div class="two-col">
+              <div class="field">
+                <label for="image_width">عرض الصورة (بكسل)</label>
+                <input type="number" id="image_width" value="{{ settings.image.image_width }}" min="256" max="4096" step="64" />
+              </div>
+              <div class="field">
+                <label for="section_height">ارتفاع القسم (بكسل)</label>
+                <input type="number" id="section_height" value="{{ settings.image.section_height }}" min="512" max="8192" step="64" />
+              </div>
+            </div>
+            <div class="field">
+              <label for="image_concurrency">التزامن (عدد الصور المتوازية)</label>
+              <input type="number" id="image_concurrency" value="{{ settings.image.image_concurrency }}" min="1" max="10" />
+              <div class="hint">عدد الصور التي تولد في نفس الوقت</div>
+            </div>
+          </div>
+          <button class="primary save-btn" onclick="saveImage()">حفظ أحجام الصور</button>
+        </div>
+
+        <!-- Prompts Tab -->
+        <div class="tab-panel" id="panel-prompts">
+          <div class="settings-card">
+            <h3>نص نظام كتابة المحتوى (عربي)</h3>
+            <div class="field">
+              <label for="copy_system_ar">الأمر الأساسي لكاتب النصوص</label>
+              <textarea id="copy_system_ar" dir="rtl">{{ settings.prompts.copy_system_ar or default_prompts.copy_system_ar }}</textarea>
+              <div class="hint">هذا النص يرسل كـ system prompt عند توليد النصوص التسويقية</div>
+            </div>
+          </div>
+          <div class="settings-card">
+            <h3>أمر تحليل الصور</h3>
+            <div class="field">
+              <label for="analyzer_instructions">تعليمات محلل المنتج</label>
+              <textarea id="analyzer_instructions" dir="ltr" style="font-family: monospace; font-size: 0.85rem;">{{ settings.prompts.analyzer_instructions or default_prompts.analyzer_instructions }}</textarea>
+              <div class="hint">تعليمات تحليل صورة المنتج (بالإنجليزية)</div>
+            </div>
+          </div>
+          <button class="primary save-btn" onclick="savePrompts()">حفظ النصوص</button>
+        </div>
+
+        <!-- UI Settings Tab -->
+        <div class="tab-panel" id="panel-ui">
+          <div class="settings-card">
+            <h3>إظهار/إخفاء أيقونات API</h3>
+            <p style="color: var(--muted); margin-top:0; font-size: 0.9rem;">تحكم في ظهور أيقونات مزودي الخدمة</p>
+            <div class="toggle-row">
+              <span class="label-text">إظهار أيقونات API</span>
+              <label class="toggle">
+                <input type="checkbox" id="show_api_icons" {{ 'checked' if settings.ui.show_api_icons }} />
+                <span class="slider"></span>
+              </label>
+            </div>
+            {% for key, icon in settings.ui.api_icons_config.items() %}
+            <div class="toggle-row">
+              <span class="label-text">{{ icon.label }} ({{ key }})</span>
+              <label class="toggle">
+                <input type="checkbox" class="icon-toggle" data-key="{{ key }}" {{ 'checked' if icon.visible }} />
+                <span class="slider"></span>
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+          <button class="primary save-btn" onclick="saveUI()">حفظ إعدادات الواجهة</button>
+        </div>
+
+        <!-- Credentials Tab -->
+        <div class="tab-panel" id="panel-credentials">
+          <div class="settings-card">
+            <h3>تغيير بيانات تسجيل الدخول</h3>
+            <div class="field">
+              <label for="new_username">اسم المستخدم الجديد</label>
+              <input type="text" id="new_username" value="{{ settings.auth.username }}" />
+            </div>
+            <div class="field">
+              <label for="new_password">كلمة المرور الجديدة</label>
+              <input type="password" id="new_password" placeholder="اتركه فارغا للإبقاء على كلمة المرور الحالية" />
+            </div>
+            <div class="field">
+              <label for="confirm_password">تأكيد كلمة المرور</label>
+              <input type="password" id="confirm_password" placeholder="أعد كتابة كلمة المرور الجديدة" />
+            </div>
+          </div>
+          <button class="primary save-btn" onclick="saveCredentials()">تحديث بيانات الدخول</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="success-toast" id="toast">تم الحفظ بنجاح</div>
+
+  <script>
+    // ─── Auth Check ───
+    async function checkAuth() {
+      try {
+        const res = await fetch('/admin/api/status');
+        const data = await res.json();
+        if (data.authenticated) {
+          document.getElementById('login-section').style.display = 'none';
+          document.getElementById('app-section').style.display = 'flex';
+          loadJobs();
+        } else {
+          document.getElementById('login-section').style.display = 'flex';
+          document.getElementById('app-section').style.display = 'none';
+        }
+      } catch (e) {
+        document.getElementById('login-section').style.display = 'flex';
+        document.getElementById('app-section').style.display = 'none';
+      }
+    }
+
+    // ─── Login ───
+    document.getElementById('login-form').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const username = document.getElementById('username').value;
+      const password = document.getElementById('password').value;
+      const errorEl = document.getElementById('login-error');
+      errorEl.style.display = 'none';
+
+      try {
+        const formData = new URLSearchParams();
+        formData.append('username', username);
+        formData.append('password', password);
+        const res = await fetch('/admin/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Accept': 'application/json'
+          },
+          body: formData
+        });
+        const data = await res.json();
+        if (data.success) {
+          checkAuth();
+        } else {
+          errorEl.textContent = data.error || 'خطأ في تسجيل الدخول';
+          errorEl.style.display = 'block';
+        }
+      } catch (e) {
+        errorEl.textContent = 'خطأ في الاتصال';
+        errorEl.style.display = 'block';
+      }
+    });
+
+    // ─── Logout ───
+    document.getElementById('logout-btn').addEventListener('click', async () => {
+      await fetch('/admin/logout', { method: 'POST' });
+      document.getElementById('login-section').style.display = 'flex';
+      document.getElementById('app-section').style.display = 'none';
+    });
+
+    // ─── Sidebar Navigation ───
+    document.querySelectorAll('.spa-nav-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.spa-nav-item').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.spa-section').forEach(s => s.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('section-' + btn.dataset.section).classList.add('active');
+        if (btn.dataset.section === 'jobs') loadJobs();
+      });
+    });
+
+    // ─── Settings Tabs ───
+    document.querySelectorAll('.tabs .tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tabs .tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ─── Generate Form ───
+    document.querySelectorAll('.input-method-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.input-method-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.input-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.method).classList.add('active');
+      });
+    });
+
+    const STEP_ESTIMATES = {
+      "queued": { progress: 5, eta: "~2-3 دقائق" },
+      "analyzing product image": { progress: 15, eta: "~2 دقيقة" },
+      "generating Arabic copy": { progress: 30, eta: "~1.5 دقيقة" },
+      "generating 8 section images": { progress: 50, eta: "~1 دقيقة" },
+      "stitching final long image": { progress: 85, eta: "~15 ثانية" },
+      "complete": { progress: 100, eta: "مكتمل" },
+    };
+
+    let jobStartTime = null;
+
+    document.getElementById('upload-form').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const activePanel = document.querySelector('.input-panel.active');
+      const isUrl = activePanel.id === 'panel-url';
+      let body, headers = {};
+
+      if (isUrl) {
+        const url = document.getElementById('image-url').value.trim();
+        if (!url) { alert('الرجاء إدخال رابط الصورة'); return; }
+        body = JSON.stringify({ image_url: url });
+        headers['Content-Type'] = 'application/json';
+      } else {
+        const fileInput = document.getElementById('image');
+        if (!fileInput.files.length) { alert('الرجاء اختيار صورة'); return; }
+        body = new FormData(document.getElementById('upload-form'));
+      }
+
+      const statusEl = document.getElementById('gen-status');
+      const statusText = document.getElementById('gen-status-text');
+      const viewLink = document.getElementById('gen-view-link');
+      const progressBar = document.getElementById('gen-progress-bar');
+      const progressFill = document.getElementById('gen-progress-fill');
+      const timeEstimate = document.getElementById('gen-time-estimate');
+
+      statusEl.classList.remove('hidden');
+      statusText.textContent = 'جارٍ الإرسال...';
+      viewLink.style.display = 'none';
+      progressBar.style.display = 'block';
+      progressFill.style.width = '5%';
+      timeEstimate.style.display = 'block';
+      timeEstimate.textContent = 'الوقت المتوقع: ~2-3 دقائق';
+      jobStartTime = Date.now();
+
+      const endpoint = isUrl ? '/generate-url' : '/generate';
+      const fetchOpts = { method: 'POST', body };
+      if (headers['Content-Type']) fetchOpts.headers = headers;
+
+      const res = await fetch(endpoint, fetchOpts);
+      if (!res.ok) {
+        statusText.textContent = 'فشل الإرسال: ' + res.status;
+        progressBar.style.display = 'none';
+        timeEstimate.style.display = 'none';
+        return;
+      }
+      const respBody = await res.json();
+      viewLink.href = respBody.view_url;
+      pollGenerate(respBody.status_url, statusText, viewLink, progressFill, timeEstimate);
+    });
+
+    async function pollGenerate(url, statusText, viewLink, progressFill, timeEstimate) {
+      while (true) {
+        const r = await fetch(url);
+        if (!r.ok) { statusText.textContent = 'خطأ في جلب الحالة'; return; }
+        const j = await r.json();
+        const stepInfo = STEP_ESTIMATES[j.step] || { progress: 50, eta: 'جارٍ المعالجة...' };
+        statusText.textContent = 'الخطوة: ' + j.step + ' — الحالة: ' + j.status;
+        progressFill.style.width = stepInfo.progress + '%';
+        const elapsed = Math.round((Date.now() - jobStartTime) / 1000);
+        const elapsedStr = elapsed > 60 ? Math.floor(elapsed/60) + ' د ' + (elapsed%60) + ' ث' : elapsed + ' ثانية';
+        timeEstimate.textContent = 'الوقت المنقضي: ' + elapsedStr + ' | المتبقي: ' + stepInfo.eta;
+        if (j.status === 'done') {
+          progressFill.style.width = '100%';
+          timeEstimate.textContent = 'اكتمل في ' + elapsedStr;
+          timeEstimate.style.background = '#ecfdf5';
+          viewLink.style.display = 'inline-block';
+          return;
+        }
+        if (j.status === 'error') {
+          statusText.textContent += ' — ' + (j.error || '');
+          progressFill.style.background = '#ef4444';
+          timeEstimate.style.display = 'none';
+          return;
+        }
+        await new Promise(r => setTimeout(r, 2000));
+      }
+    }
+
+    // ─── Jobs ───
+    let jobsPollTimer = null;
+
+    async function loadJobs() {
+      try {
+        const res = await fetch('/admin/api/jobs');
+        const jobs = await res.json();
+        renderJobs(jobs);
+      } catch (e) {
+        document.getElementById('jobs-container').innerHTML = '<div class="empty-state"><h3>خطأ في تحميل المشاريع</h3></div>';
+      }
+    }
+
+    function renderJobs(jobs) {
+      const container = document.getElementById('jobs-container');
+      if (!jobs.length) {
+        container.innerHTML = '<div class="empty-state"><h3>لا توجد مشاريع بعد</h3><p>ابدأ بإنشاء صفحة هبوط جديدة</p></div>';
+        return;
+      }
+      let html = '<table class="jobs-table"><thead><tr><th>المعرف</th><th>الحالة</th><th>المرحلة</th><th>التقدم</th><th>الخطأ</th><th>إجراء</th></tr></thead><tbody>';
+      for (const job of jobs) {
+        const statusLabel = job.status === 'done' ? 'مكتمل' : job.status === 'error' ? 'خطأ' : job.status === 'running' ? 'قيد التنفيذ' : 'في الانتظار';
+        const fillClass = 'fill-' + job.status;
+        html += '<tr>';
+        html += '<td><code>' + job.id + '</code></td>';
+        html += '<td><span class="status-badge status-' + job.status + '">' + statusLabel + '</span></td>';
+        html += '<td><span class="step-text">' + job.step + '</span></td>';
+        html += '<td><div class="progress-mini"><div class="' + fillClass + '" style="width:' + job.progress + '%"></div></div></td>';
+        html += '<td>' + (job.error ? '<span class="error-text">' + job.error.substring(0, 80) + '</span>' : '—') + '</td>';
+        html += '<td>';
+        if (job.status === 'done' || job.status === 'running') {
+          html += '<a href="/jobs/' + job.id + '/view" target="_blank" class="view-btn">' + (job.status === 'done' ? 'عرض' : 'متابعة') + '</a>';
+        } else {
+          html += '—';
+        }
+        html += '</td></tr>';
+      }
+      html += '</tbody></table>';
+      container.innerHTML = html;
+    }
+
+    // ─── Settings Save ───
+    function showToast(msg, isError) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg || 'تم الحفظ بنجاح';
+      toast.style.background = isError ? '#b91c1c' : '#065f46';
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    async function postSettings(endpoint, data) {
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (res.ok) { showToast('تم الحفظ بنجاح'); }
+        else {
+          const err = await res.json();
+          showToast(err.detail || 'خطأ في الحفظ', true);
+        }
+      } catch (e) { showToast('خطأ في الاتصال', true); }
+    }
+
+    function saveAPI() {
+      postSettings('/admin/api/settings/api', {
+        yunwu_api_key: document.getElementById('yunwu_api_key').value,
+        yunwu_base_url: document.getElementById('yunwu_base_url').value,
+        chat_model: document.getElementById('chat_model').value,
+        image_model: document.getElementById('image_model').value,
+        image_edit_model: document.getElementById('image_edit_model').value,
+        google_vision_api_key: document.getElementById('google_vision_api_key').value,
+        analyzer_backend: document.getElementById('analyzer_backend').value,
+      });
+    }
+
+    function saveImage() {
+      postSettings('/admin/api/settings/image', {
+        image_width: parseInt(document.getElementById('image_width').value),
+        section_height: parseInt(document.getElementById('section_height').value),
+        image_concurrency: parseInt(document.getElementById('image_concurrency').value),
+      });
+    }
+
+    function savePrompts() {
+      postSettings('/admin/api/settings/prompts', {
+        copy_system_ar: document.getElementById('copy_system_ar').value,
+        analyzer_instructions: document.getElementById('analyzer_instructions').value,
+      });
+    }
+
+    function saveUI() {
+      const iconsConfig = {};
+      document.querySelectorAll('.icon-toggle').forEach(el => {
+        iconsConfig[el.dataset.key] = { visible: el.checked };
+      });
+      postSettings('/admin/api/settings/ui', {
+        show_api_icons: document.getElementById('show_api_icons').checked,
+        api_icons_config: iconsConfig,
+      });
+    }
+
+    function saveCredentials() {
+      const newPass = document.getElementById('new_password').value;
+      const confirm = document.getElementById('confirm_password').value;
+      if (newPass && newPass !== confirm) { showToast('كلمة المرور غير متطابقة', true); return; }
+      postSettings('/admin/api/settings/credentials', {
+        username: document.getElementById('new_username').value,
+        password: newPass || null,
+      });
+    }
+
+    // ─── Init ───
+    checkAuth();
+  </script>
+</body>
+</html>

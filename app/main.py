@@ -71,13 +71,32 @@ async def healthz() -> dict[str, str]:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    ui_settings = get_setting("ui") or {}
+    """Serve the SPA dashboard page."""
+    all_settings = load_settings()
+
+    # Load default prompts from files for display
+    prompts_dir = BASE_DIR / "prompts"
+    default_copy = ""
+    default_analyzer = ""
+    try:
+        default_copy = (prompts_dir / "copy_system_ar.txt").read_text(encoding="utf-8")
+    except OSError:
+        pass
+    try:
+        from app.services.analyzer import ANALYZER_INSTRUCTIONS
+        default_analyzer = ANALYZER_INSTRUCTIONS
+    except ImportError:
+        pass
+
     return templates.TemplateResponse(
         request,
-        "index.html",
+        "spa.html",
         {
-            "show_api_icons": ui_settings.get("show_api_icons", True),
-            "api_icons": ui_settings.get("api_icons_config", {}),
+            "settings": _make_dot_dict(all_settings),
+            "default_prompts": _make_dot_dict({
+                "copy_system_ar": default_copy,
+                "analyzer_instructions": default_analyzer,
+            }),
         },
     )
 
@@ -245,11 +264,22 @@ async def admin_login_page(request: Request) -> HTMLResponse:
 
 @app.post("/admin/login")
 async def admin_login(request: Request, username: str = Form(...), password: str = Form(...)):
+    accept = request.headers.get("accept", "")
+    wants_json = "application/json" in accept
+
     if verify_credentials(username, password):
         token = create_session(username)
-        response = RedirectResponse(url="/admin/dashboard", status_code=302)
+        if wants_json:
+            response = JSONResponse({"success": True, "error": None})
+        else:
+            response = RedirectResponse(url="/admin/dashboard", status_code=302)
         set_session_cookie(response, token)
         return response
+
+    if wants_json:
+        return JSONResponse(
+            {"success": False, "error": "اسم المستخدم أو كلمة المرور غير صحيحة"}
+        )
     return templates.TemplateResponse(
         request,
         "login.html",
@@ -297,6 +327,42 @@ async def admin_dashboard(request: Request) -> HTMLResponse:
             }),
         },
     )
+
+
+# ─────────────────────────────────────────────────────── Admin JSON API
+
+
+@app.get("/admin/api/status")
+async def admin_api_status(request: Request) -> JSONResponse:
+    """Return authentication status as JSON."""
+    session = verify_session(request)
+    if session:
+        return JSONResponse({"authenticated": True, "username": session["username"]})
+    return JSONResponse({"authenticated": False, "username": None})
+
+
+@app.get("/admin/api/jobs")
+async def admin_api_jobs(request: Request) -> JSONResponse:
+    """Return all jobs as JSON for the SPA."""
+    redirect = require_auth(request)
+    if redirect:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
+    jobs_list = []
+    for job in reversed(list(_JOBS.values())):  # newest first
+        progress = STEP_PROGRESS.get(job.step, 50)
+        if job.status == "done":
+            progress = 100
+        elif job.status == "error":
+            progress = STEP_PROGRESS.get(job.step, 50)
+        jobs_list.append({
+            "id": job.id,
+            "status": job.status,
+            "step": job.step,
+            "error": job.error,
+            "progress": progress,
+        })
+    return JSONResponse(jobs_list)
 
 
 # ─────────────────────────────────────────────────────── Admin Settings API
