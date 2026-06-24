@@ -166,16 +166,17 @@ class YunwuClient:
         fmt: str = "png",
         n: int = 1,
     ) -> list[bytes]:
-        """Image edit / multi-image route (``gpt-image-2-all``).
+        """Image generation with reference images via the ``image`` parameter.
 
-        Reference images are sent as base64 strings under the ``image`` field,
-        matching the Yunwu/OpenAI image-edit JSON shape.
+        Uses gpt-image-2 by default (self.settings.image_model) so that
+        reference images are accepted without requiring gpt-image-2-all.
+        Reference images are sent as base64 strings under the ``image`` field.
         """
 
         url = f"{self.settings.yunwu_base_url}/v1/images/generations"
         encoded = [base64.b64encode(b).decode("ascii") for b in reference_images]
         payload = {
-            "model": model or self.settings.image_edit_model,
+            "model": model or self.settings.image_model,
             "prompt": prompt,
             "size": size,
             "n": n,
