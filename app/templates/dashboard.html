@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>لوحة التحكم - الإعدادات</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .dashboard-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .dashboard-header .actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn-logout {
+      background: transparent;
+      border: 1px solid var(--error);
+      color: var(--error);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .btn-logout:hover {
+      background: #fef2f2;
+    }
+    .btn-home {
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent-strong);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      text-decoration: none;
+    }
+    .btn-home:hover {
+      background: #fff7e6;
+    }
+    .tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid #e5e7eb;
+      margin-bottom: 24px;
+      overflow-x: auto;
+    }
+    .tab {
+      padding: 12px 20px;
+      cursor: pointer;
+      border: none;
+      background: transparent;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--muted);
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+    .tab:hover {
+      color: var(--accent-strong);
+    }
+    .tab.active {
+      color: var(--accent-strong);
+      border-bottom-color: var(--accent);
+    }
+    .tab-panel {
+      display: none;
+    }
+    .tab-panel.active {
+      display: block;
+    }
+    .settings-card {
+      background: var(--card);
+      padding: 28px;
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.04);
+      margin-bottom: 20px;
+    }
+    .settings-card h3 {
+      margin-top: 0;
+      margin-bottom: 20px;
+      color: var(--accent-strong);
+      font-size: 1.1rem;
+    }
+    .field {
+      margin-bottom: 18px;
+    }
+    .field label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 6px;
+      font-size: 0.9rem;
+    }
+    .field input[type="text"],
+    .field input[type="number"],
+    .field input[type="password"],
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      background: var(--bg);
+      font-family: inherit;
+    }
+    .field textarea {
+      min-height: 160px;
+      resize: vertical;
+      direction: rtl;
+    }
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+    .field .hint {
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    .save-btn {
+      padding: 12px 28px;
+      font-size: 1rem;
+      margin-top: 12px;
+    }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .toggle-row:last-child {
+      border-bottom: none;
+    }
+    .toggle-row .label-text {
+      font-weight: 500;
+    }
+    .toggle {
+      position: relative;
+      width: 48px;
+      height: 26px;
+    }
+    .toggle input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .toggle .slider {
+      position: absolute;
+      inset: 0;
+      background: #d1d5db;
+      border-radius: 13px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+    .toggle .slider::before {
+      content: "";
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      background: #fff;
+      border-radius: 50%;
+      top: 3px;
+      right: 3px;
+      transition: transform 0.3s;
+    }
+    .toggle input:checked + .slider {
+      background: var(--accent);
+    }
+    .toggle input:checked + .slider::before {
+      transform: translateX(-22px);
+    }
+    .success-toast {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #065f46;
+      color: #fff;
+      padding: 12px 24px;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      z-index: 9999;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+    }
+    .success-toast.show {
+      opacity: 1;
+    }
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 640px) {
+      .two-col { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="dashboard-header">
+      <h1>لوحة التحكم</h1>
+      <div class="actions">
+        <a href="/" class="btn-home">الصفحة الرئيسية</a>
+        <form method="POST" action="/admin/logout" style="margin:0">
+          <button type="submit" class="btn-logout">تسجيل الخروج</button>
+        </form>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" data-tab="api">إعدادات API</button>
+      <button class="tab" data-tab="image">أحجام الصور</button>
+      <button class="tab" data-tab="prompts">النصوص والأوامر</button>
+      <button class="tab" data-tab="ui">واجهة المستخدم</button>
+      <button class="tab" data-tab="credentials">بيانات الدخول</button>
+    </div>
+
+    <!-- API Settings Tab -->
+    <div class="tab-panel active" id="panel-api">
+      <div class="settings-card">
+        <h3>إعدادات API الأساسية</h3>
+        <div class="field">
+          <label for="yunwu_api_key">مفتاح Yunwu API</label>
+          <input type="password" id="yunwu_api_key" value="{{ settings.api.yunwu_api_key }}" />
+          <div class="hint">مفتاح API للوصول إلى خدمات Yunwu</div>
+        </div>
+        <div class="field">
+          <label for="yunwu_base_url">عنوان Yunwu الأساسي</label>
+          <input type="text" id="yunwu_base_url" value="{{ settings.api.yunwu_base_url }}" />
+        </div>
+        <div class="two-col">
+          <div class="field">
+            <label for="chat_model">موديل المحادثة</label>
+            <input type="text" id="chat_model" value="{{ settings.api.chat_model }}" />
+          </div>
+          <div class="field">
+            <label for="image_model">موديل الصور</label>
+            <input type="text" id="image_model" value="{{ settings.api.image_model }}" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="image_edit_model">موديل تعديل الصور</label>
+          <input type="text" id="image_edit_model" value="{{ settings.api.image_edit_model }}" />
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3>Google Vision (اختياري)</h3>
+        <div class="field">
+          <label for="google_vision_api_key">مفتاح Google Vision API</label>
+          <input type="password" id="google_vision_api_key" value="{{ settings.api.google_vision_api_key }}" />
+        </div>
+        <div class="field">
+          <label for="analyzer_backend">محلل الصور المستخدم</label>
+          <select id="analyzer_backend">
+            <option value="yunwu" {{ 'selected' if settings.api.analyzer_backend == 'yunwu' }}>Yunwu</option>
+            <option value="google_vision" {{ 'selected' if settings.api.analyzer_backend == 'google_vision' }}>Google Vision</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="primary save-btn" onclick="saveAPI()">حفظ إعدادات API</button>
+    </div>
+
+    <!-- Image Settings Tab -->
+    <div class="tab-panel" id="panel-image">
+      <div class="settings-card">
+        <h3>أحجام الصور المولّدة</h3>
+        <div class="two-col">
+          <div class="field">
+            <label for="image_width">عرض الصورة (بكسل)</label>
+            <input type="number" id="image_width" value="{{ settings.image.image_width }}" min="256" max="4096" step="64" />
+          </div>
+          <div class="field">
+            <label for="section_height">ارتفاع القسم (بكسل)</label>
+            <input type="number" id="section_height" value="{{ settings.image.section_height }}" min="512" max="8192" step="64" />
+          </div>
+        </div>
+        <div class="field">
+          <label for="image_concurrency">التزامن (عدد الصور المتوازية)</label>
+          <input type="number" id="image_concurrency" value="{{ settings.image.image_concurrency }}" min="1" max="10" />
+          <div class="hint">عدد الصور التي تُولّد في نفس الوقت. زيادة العدد = سرعة أكبر لكن ضغط أكثر على API</div>
+        </div>
+      </div>
+      <button class="primary save-btn" onclick="saveImage()">حفظ أحجام الصور</button>
+    </div>
+
+    <!-- Prompts Tab -->
+    <div class="tab-panel" id="panel-prompts">
+      <div class="settings-card">
+        <h3>نص نظام كتابة المحتوى (عربي)</h3>
+        <div class="field">
+          <label for="copy_system_ar">الأمر الأساسي لكاتب النصوص</label>
+          <textarea id="copy_system_ar" dir="rtl">{{ settings.prompts.copy_system_ar or default_prompts.copy_system_ar }}</textarea>
+          <div class="hint">هذا النص يُرسل كـ system prompt عند توليد النصوص التسويقية</div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <h3>أمر تحليل الصور</h3>
+        <div class="field">
+          <label for="analyzer_instructions">تعليمات محلل المنتج</label>
+          <textarea id="analyzer_instructions" dir="ltr" style="font-family: monospace; font-size: 0.85rem;">{{ settings.prompts.analyzer_instructions or default_prompts.analyzer_instructions }}</textarea>
+          <div class="hint">تعليمات تحليل صورة المنتج (بالإنجليزية)</div>
+        </div>
+      </div>
+
+      <button class="primary save-btn" onclick="savePrompts()">حفظ النصوص</button>
+    </div>
+
+    <!-- UI Settings Tab -->
+    <div class="tab-panel" id="panel-ui">
+      <div class="settings-card">
+        <h3>إظهار/إخفاء أيقونات API</h3>
+        <p style="color: var(--muted); margin-top:0; font-size: 0.9rem;">تحكّم في ظهور أيقونات مزودي الخدمة على الصفحة الرئيسية</p>
+        
+        <div class="toggle-row">
+          <span class="label-text">إظهار أيقونات API</span>
+          <label class="toggle">
+            <input type="checkbox" id="show_api_icons" {{ 'checked' if settings.ui.show_api_icons }} />
+            <span class="slider"></span>
+          </label>
+        </div>
+
+        {% for key, icon in settings.ui.api_icons_config.items() %}
+        <div class="toggle-row">
+          <span class="label-text">{{ icon.label }} ({{ key }})</span>
+          <label class="toggle">
+            <input type="checkbox" class="icon-toggle" data-key="{{ key }}" {{ 'checked' if icon.visible }} />
+            <span class="slider"></span>
+          </label>
+        </div>
+        {% endfor %}
+      </div>
+      <button class="primary save-btn" onclick="saveUI()">حفظ إعدادات الواجهة</button>
+    </div>
+
+    <!-- Credentials Tab -->
+    <div class="tab-panel" id="panel-credentials">
+      <div class="settings-card">
+        <h3>تغيير بيانات تسجيل الدخول</h3>
+        <div class="field">
+          <label for="new_username">اسم المستخدم الجديد</label>
+          <input type="text" id="new_username" value="{{ settings.auth.username }}" />
+        </div>
+        <div class="field">
+          <label for="new_password">كلمة المرور الجديدة</label>
+          <input type="password" id="new_password" placeholder="اتركه فارغاً للإبقاء على كلمة المرور الحالية" />
+        </div>
+        <div class="field">
+          <label for="confirm_password">تأكيد كلمة المرور</label>
+          <input type="password" id="confirm_password" placeholder="أعد كتابة كلمة المرور الجديدة" />
+        </div>
+      </div>
+      <button class="primary save-btn" onclick="saveCredentials()">تحديث بيانات الدخول</button>
+    </div>
+  </main>
+
+  <div class="success-toast" id="toast">تم الحفظ بنجاح</div>
+
+  <script>
+    // Tab navigation
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('panel-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    function showToast(msg, isError) {
+      const toast = document.getElementById('toast');
+      toast.textContent = msg || 'تم الحفظ بنجاح';
+      toast.style.background = isError ? '#b91c1c' : '#065f46';
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    async function postSettings(endpoint, data) {
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        if (res.ok) {
+          showToast('تم الحفظ بنجاح');
+        } else {
+          const err = await res.json();
+          showToast(err.detail || 'خطأ في الحفظ', true);
+        }
+      } catch (e) {
+        showToast('خطأ في الاتصال', true);
+      }
+    }
+
+    function saveAPI() {
+      postSettings('/admin/api/settings/api', {
+        yunwu_api_key: document.getElementById('yunwu_api_key').value,
+        yunwu_base_url: document.getElementById('yunwu_base_url').value,
+        chat_model: document.getElementById('chat_model').value,
+        image_model: document.getElementById('image_model').value,
+        image_edit_model: document.getElementById('image_edit_model').value,
+        google_vision_api_key: document.getElementById('google_vision_api_key').value,
+        analyzer_backend: document.getElementById('analyzer_backend').value,
+      });
+    }
+
+    function saveImage() {
+      postSettings('/admin/api/settings/image', {
+        image_width: parseInt(document.getElementById('image_width').value),
+        section_height: parseInt(document.getElementById('section_height').value),
+        image_concurrency: parseInt(document.getElementById('image_concurrency').value),
+      });
+    }
+
+    function savePrompts() {
+      postSettings('/admin/api/settings/prompts', {
+        copy_system_ar: document.getElementById('copy_system_ar').value,
+        analyzer_instructions: document.getElementById('analyzer_instructions').value,
+      });
+    }
+
+    function saveUI() {
+      const iconsConfig = {};
+      document.querySelectorAll('.icon-toggle').forEach(el => {
+        iconsConfig[el.dataset.key] = { visible: el.checked };
+      });
+      postSettings('/admin/api/settings/ui', {
+        show_api_icons: document.getElementById('show_api_icons').checked,
+        api_icons_config: iconsConfig,
+      });
+    }
+
+    function saveCredentials() {
+      const newPass = document.getElementById('new_password').value;
+      const confirm = document.getElementById('confirm_password').value;
+      if (newPass && newPass !== confirm) {
+        showToast('كلمة المرور غير متطابقة', true);
+        return;
+      }
+      postSettings('/admin/api/settings/credentials', {
+        username: document.getElementById('new_username').value,
+        password: newPass || null,
+      });
+    }
+  </script>
+</body>
+</html>

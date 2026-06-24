@@ -1,6 +1,7 @@
 """FastAPI entry point.
 
-Single-page upload form, background job runner, status / result page.
+Single-page upload form, background job runner, status / result page,
+admin dashboard with settings management.
 """
 
 from __future__ import annotations
@@ -10,19 +11,34 @@ import logging
 import uuid
 from pathlib import Path
 
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Request, UploadFile
-from fastapi.responses import HTMLResponse, JSONResponse
+import httpx
+from fastapi import BackgroundTasks, FastAPI, Form, HTTPException, Request, UploadFile
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
+from app.auth import (
+    create_session,
+    destroy_session,
+    require_auth,
+    set_session_cookie,
+    verify_session,
+)
 from app.config import settings
 from app.pipeline import Pipeline
 from app.schemas import JobRecord
+from app.settings_store import (
+    change_credentials,
+    get_setting,
+    load_settings,
+    update_section,
+    verify_credentials,
+)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s — %(message)s")
 log = logging.getLogger("app")
 
-app = FastAPI(title="Landing Page Generator", version="0.1.0")
+app = FastAPI(title="Landing Page Generator", version="0.2.0")
 
 BASE_DIR = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE_DIR / "templates"))
@@ -35,6 +51,9 @@ _JOBS: dict[str, JobRecord] = {}
 _JOBS_LOCK = asyncio.Lock()
 
 
+# ─────────────────────────────────────────────────────────────── Public Routes
+
+
 @app.get("/healthz")
 async def healthz() -> dict[str, str]:
     return {"status": "ok"}
@@ -42,7 +61,15 @@ async def healthz() -> dict[str, str]:
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
-    return templates.TemplateResponse(request, "index.html", {})
+    ui_settings = get_setting("ui") or {}
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {
+            "show_api_icons": ui_settings.get("show_api_icons", True),
+            "api_icons": ui_settings.get("api_icons_config", {}),
+        },
+    )
 
 
 @app.post("/generate")
@@ -67,6 +94,52 @@ async def generate(
         _JOBS[job_id] = record
 
     background_tasks.add_task(_run_job, job_id, raw, image.content_type)
+
+    return JSONResponse(
+        {
+            "job_id": job_id,
+            "status_url": str(request.url_for("job_status", job_id=job_id)),
+            "view_url": str(request.url_for("job_view", job_id=job_id)),
+        }
+    )
+
+
+@app.post("/generate-url")
+async def generate_from_url(
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> JSONResponse:
+    """Generate from an image URL instead of file upload."""
+    body = await request.json()
+    image_url = body.get("image_url", "").strip()
+    if not image_url:
+        raise HTTPException(status_code=400, detail="image_url is required.")
+
+    # Download the image
+    try:
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            resp = await client.get(image_url)
+            resp.raise_for_status()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Failed to download image: {exc}")
+
+    content_type = resp.headers.get("content-type", "image/jpeg")
+    if not content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="URL does not point to an image.")
+
+    raw = resp.content
+    if not raw:
+        raise HTTPException(status_code=400, detail="Downloaded empty file.")
+
+    job_id = uuid.uuid4().hex[:12]
+    upload_path = settings.upload_dir / f"{job_id}_url_download"
+    upload_path.write_bytes(raw)
+
+    record = JobRecord(id=job_id, status="pending", step="queued")
+    async with _JOBS_LOCK:
+        _JOBS[job_id] = record
+
+    background_tasks.add_task(_run_job, job_id, raw, content_type)
 
     return JSONResponse(
         {
@@ -121,6 +194,143 @@ async def job_view(request: Request, job_id: str) -> HTMLResponse:
     )
 
 
+# ─────────────────────────────────────────────────────────────── Admin Routes
+
+
+@app.get("/admin/login", response_class=HTMLResponse)
+async def admin_login_page(request: Request) -> HTMLResponse:
+    session = verify_session(request)
+    if session:
+        return RedirectResponse(url="/admin/dashboard", status_code=302)
+    return templates.TemplateResponse(request, "login.html", {"error": None})
+
+
+@app.post("/admin/login")
+async def admin_login(request: Request, username: str = Form(...), password: str = Form(...)):
+    if verify_credentials(username, password):
+        token = create_session(username)
+        response = RedirectResponse(url="/admin/dashboard", status_code=302)
+        set_session_cookie(response, token)
+        return response
+    return templates.TemplateResponse(
+        request,
+        "login.html",
+        {"error": "اسم المستخدم أو كلمة المرور غير صحيحة"},
+    )
+
+
+@app.post("/admin/logout")
+async def admin_logout(request: Request):
+    response = RedirectResponse(url="/admin/login", status_code=302)
+    destroy_session(request, response)
+    return response
+
+
+@app.get("/admin/dashboard", response_class=HTMLResponse)
+async def admin_dashboard(request: Request) -> HTMLResponse:
+    redirect = require_auth(request)
+    if redirect:
+        return redirect
+
+    all_settings = load_settings()
+
+    # Load default prompts from files for display
+    prompts_dir = BASE_DIR / "prompts"
+    default_copy = ""
+    default_analyzer = ""
+    try:
+        default_copy = (prompts_dir / "copy_system_ar.txt").read_text(encoding="utf-8")
+    except OSError:
+        pass
+    try:
+        from app.services.analyzer import ANALYZER_INSTRUCTIONS
+        default_analyzer = ANALYZER_INSTRUCTIONS
+    except ImportError:
+        pass
+
+    return templates.TemplateResponse(
+        request,
+        "dashboard.html",
+        {
+            "settings": _make_dot_dict(all_settings),
+            "default_prompts": _make_dot_dict({
+                "copy_system_ar": default_copy,
+                "analyzer_instructions": default_analyzer,
+            }),
+        },
+    )
+
+
+# ─────────────────────────────────────────────────────── Admin Settings API
+
+
+@app.post("/admin/api/settings/api")
+async def save_api_settings(request: Request) -> JSONResponse:
+    redirect = require_auth(request)
+    if redirect:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    data = await request.json()
+    update_section("api", data)
+    return JSONResponse({"status": "ok"})
+
+
+@app.post("/admin/api/settings/image")
+async def save_image_settings(request: Request) -> JSONResponse:
+    redirect = require_auth(request)
+    if redirect:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    data = await request.json()
+    update_section("image", data)
+    return JSONResponse({"status": "ok"})
+
+
+@app.post("/admin/api/settings/prompts")
+async def save_prompts_settings(request: Request) -> JSONResponse:
+    redirect = require_auth(request)
+    if redirect:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    data = await request.json()
+    update_section("prompts", data)
+    return JSONResponse({"status": "ok"})
+
+
+@app.post("/admin/api/settings/ui")
+async def save_ui_settings(request: Request) -> JSONResponse:
+    redirect = require_auth(request)
+    if redirect:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    data = await request.json()
+    # Merge icon config properly
+    current = get_setting("ui") or {}
+    current_icons = current.get("api_icons_config", {})
+    new_icons = data.get("api_icons_config", {})
+    for key, val in new_icons.items():
+        if key in current_icons:
+            current_icons[key].update(val)
+        else:
+            current_icons[key] = val
+    data["api_icons_config"] = current_icons
+    update_section("ui", data)
+    return JSONResponse({"status": "ok"})
+
+
+@app.post("/admin/api/settings/credentials")
+async def save_credentials(request: Request) -> JSONResponse:
+    redirect = require_auth(request)
+    if redirect:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    data = await request.json()
+    username = data.get("username")
+    password = data.get("password")
+    if not username:
+        raise HTTPException(status_code=400, detail="اسم المستخدم مطلوب")
+    change_credentials(new_username=username, new_password=password if password else None)
+    return JSONResponse({"status": "ok"})
+
+
+# ─────────────────────────────────────────────────────────────── Helpers
+
+
 def _file_url(path: str | None) -> str | None:
     if not path:
         return None
@@ -131,3 +341,29 @@ def _file_url(path: str | None) -> str | None:
     except ValueError:
         return None
     return f"/files/{rel.as_posix()}"
+
+
+class _DotDict(dict):
+    """Dict subclass that allows attribute access for Jinja2 templates."""
+    def __getattr__(self, key):
+        val = self.get(key)
+        if isinstance(val, dict):
+            return _DotDict(val)
+        return val if val is not None else ""
+
+    def __getitem__(self, key):
+        val = super().__getitem__(key)
+        if isinstance(val, dict):
+            return _DotDict(val)
+        return val
+
+
+def _make_dot_dict(d: dict) -> _DotDict:
+    """Recursively convert a dict to _DotDict for template access."""
+    result = _DotDict()
+    for key, val in d.items():
+        if isinstance(val, dict):
+            result[key] = _make_dot_dict(val)
+        else:
+            result[key] = val
+    return result

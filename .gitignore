@@ -17,6 +17,7 @@ dist/
 # Runtime artifacts
 output/
 uploads/
+data/
 *.log
 
 # IDE
