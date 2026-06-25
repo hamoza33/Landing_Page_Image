@@ -562,6 +562,16 @@ async def save_credentials(request: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
 
+@app.post("/admin/api/settings/image_apis")
+async def save_image_apis_settings(request: Request) -> JSONResponse:
+    redirect = require_auth(request)
+    if redirect:
+        raise HTTPException(status_code=401, detail="Unauthorized")
+    data = await request.json()
+    update_section("image_apis", data)
+    return JSONResponse({"status": "ok"})
+
+
 # ─────────────────────────────────────────────────────────────── Helpers
 
 

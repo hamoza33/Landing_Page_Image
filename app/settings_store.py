@@ -71,6 +71,13 @@ def _default_settings() -> dict[str, Any]:
                 "openai": {"visible": False, "label": "OpenAI"},
             },
         },
+        "image_apis": {
+            "default_provider": "yunwu",
+            "yunwu_base_url": "https://yunwu.ai",
+            "yunwu_keys": [],
+            "duckcoding_base_url": "https://api.duckcoding.ai",
+            "duckcoding_keys": [],
+        },
     }
 
 
