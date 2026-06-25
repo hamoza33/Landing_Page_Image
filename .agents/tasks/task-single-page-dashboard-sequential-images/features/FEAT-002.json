@@ -1,0 +1,33 @@
+{
+  "id": "FEAT-002",
+  "type": "feat",
+  "description": "Rewrite image generation to be sequential (not parallel) with product image references and previous-section bottom-crop references, plus Arabic text/icons in all prompts. Images must appear as one continuous seamless landing page when combined. Use gpt-image-2 model with the 'image' parameter for reference images.",
+  "status": "completed",
+  "steps": [
+    "Modify app/services/image_gen.py - ImageGenerator.generate_all(): Change from parallel (asyncio.gather) to sequential loop over SECTION_KEYS in order: hero, features, before_after, testimonials, faq, lifestyle, education, closing",
+    "Add logic for reference images: (1) For first section (hero): send product_image as single reference via image param [product_b64] (2) For subsequent sections: crop the BOTTOM portion (~200px) of the previously generated section image using Pillow (3) Sections that should include product reference: hero, features, before_after, lifestyle, closing - send [product_b64, prev_bottom_crop_b64] (4) Sections that should NOT include product: testimonials, faq, education - send only [prev_bottom_crop_b64]",
+    "Modify _call_image_api to always use the yunwu_client.image_edit method (which supports the image parameter) instead of yunwu_client.image. Use model gpt-image-2 (not gpt-image-2-all). Pass reference_images list.",
+    "Update yunwu_client.py image_edit method: allow passing a custom model parameter and default it to self.settings.image_model (gpt-image-2) instead of self.settings.image_edit_model. This way we use gpt-image-2 with the image parameter.",
+    "Rewrite all section prompts to: (1) Include Arabic text rendering instructions - tell the model to render Arabic text, headings, and decorative Arabic calligraphy directly in the image (2) Embed the Arabic copy content from the LandingCopy for that section into the prompt (3) Include instructions for icons and styled typography (4) Include seamless continuation instruction: the top of this image must seamlessly continue from the bottom of the previous section (reference image shows what came before) (5) Mention that the first reference image is the product photo (for sections that include it) (6) Use only simple flowing paragraphs in prompts - NO double quotes, no special symbols that could break JSON. Use single quotes or plain text only.",
+    "Add a helper function _crop_bottom(image_bytes: bytes, height: int = 200) -> bytes that takes an image and returns the bottom N pixels as PNG bytes",
+    "Update the pipeline progress step text to reflect sequential generation (e.g., 'generating section 1 of 8: hero') - update the JobRecord step field as each section is generated"
+  ],
+  "acceptance_criteria": [
+    "Image generation processes sections sequentially in order (hero first, closing last)",
+    "Each section prompt includes Arabic text/copy from LandingCopy and instructions to render Arabic text with icons",
+    "Product image is sent as reference to hero, features, before_after, lifestyle, closing sections",
+    "Bottom crop of previously generated image is sent as second reference for continuity (starting from section 2)",
+    "Prompts do not contain double quotes or special symbols that could break JSON",
+    "All prompts instruct seamless continuation from the previous section",
+    "The image parameter uses gpt-image-2 model (not gpt-image-2-all)",
+    "python -c 'from app.main import app; print(\"OK\")' succeeds",
+    "python -m pytest -q passes (tests may need updating for new sequential flow)"
+  ],
+  "verification": [
+    "pip install -r requirements.txt",
+    "python -c \"from app.main import app; print('OK')\"",
+    "python -m pytest -q"
+  ],
+  "blocked_reason": null,
+  "findings": "All 35 tests pass (24 pre-existing + 11 new). Used python3 command. image_edit now defaults to settings.image_model (gpt-image-2) instead of settings.image_edit_model. Sequential generation uses progress callback directly in generate_all. No double quotes in any prompt text."
+}

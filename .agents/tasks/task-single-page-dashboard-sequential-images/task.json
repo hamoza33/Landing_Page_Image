@@ -1,0 +1,14 @@
+{
+  "task_id": "task-single-page-dashboard-sequential-images",
+  "task_description": "Replace multi-page admin dashboard with a single-page application combining login, generation, jobs history, and settings. Rewrite image generation to be sequential with product image references and previous-section bottom-crop for seamless continuity, adding Arabic text rendering to all prompts.",
+  "status": "completed",
+  "feature_order": ["FEAT-001", "FEAT-002"],
+  "blocked_reason": null,
+  "verification": {
+    "build": "pass",
+    "tests": "pass",
+    "test_quality": "pass",
+    "docker_build": "skipped",
+    "summary": "Import check passes, all 35 tests pass. Review issues (credential exposure, progress mapping, XSS, duplication) all addressed in final fix commit."
+  }
+}

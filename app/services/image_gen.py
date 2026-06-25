@@ -26,7 +26,7 @@ import random
 from dataclasses import dataclass
 from typing import Awaitable, Callable
 
-from PIL import Image, ImageFilter
+from PIL import Image
 
 from app.config import Settings, settings as default_settings
 from app.schemas import LandingCopy, ProductBrief, SECTION_KEYS
@@ -360,12 +360,30 @@ class ImageGenerator:
         # Advertiser angle incorporation
         angle_text = ""
         if advertiser_angle:
-            angle_text = (
-                f"\n\nMARKETING ANGLE: This landing page promotes the following angle: "
-                f"{advertiser_angle}. Incorporate this marketing message visually into "
-                f"the design through supporting imagery, mood, and compositional emphasis "
-                f"that reinforces this angle."
-            )
+            if idx == 0:
+                # Hero section gets the full marketing angle
+                angle_text = (
+                    f"\n\nMARKETING ANGLE: This landing page promotes the following angle: "
+                    f"{advertiser_angle}. Make this angle the central theme of the hero section. "
+                    f"The headline and visual composition should immediately communicate this message."
+                )
+            else:
+                # Other sections get a derived/supporting angle based on section type
+                section_angle_map = {
+                    "features": f"Show how the product features support the main promise of: {advertiser_angle}. Focus on specific capabilities.",
+                    "before_after": f"Illustrate the transformation that happens when using this product, connected to the angle: {advertiser_angle}.",
+                    "testimonials": f"Show social proof and real-life satisfaction related to the promise of: {advertiser_angle}.",
+                    "faq": f"Address common questions buyers have about the product, relating to: {advertiser_angle}.",
+                    "lifestyle": f"Show the aspirational lifestyle achieved through the product, embodying the spirit of: {advertiser_angle}.",
+                    "education": f"Explain how the product works to deliver on the promise of: {advertiser_angle}.",
+                    "closing": f"Create urgency and a final call to action reinforcing: {advertiser_angle}.",
+                }
+                derived = section_angle_map.get(key, f"Support the overall marketing angle: {advertiser_angle}")
+                angle_text = (
+                    f"\n\nSECTION MARKETING FOCUS: {derived} "
+                    f"Do NOT repeat the exact marketing phrase from the hero - use a fresh perspective "
+                    f"that builds on the same idea but says it differently."
+                )
 
         return (
             f"{style}\n\n"
@@ -490,45 +508,31 @@ def _crop_bottom(image_bytes: bytes, height: int = 200) -> bytes:
 
 
 def _normalize_to_size(image_bytes: bytes, *, target_w: int, target_h: int) -> bytes:
-    """Resize/pad arbitrary image to exactly ``target_w x target_h`` PNG."""
+    """Resize/pad arbitrary image to exactly ``target_w x target_h`` PNG.
+    
+    Uses scale-to-fill with center crop to avoid any blurred padding.
+    """
 
     with Image.open(io.BytesIO(image_bytes)) as im:
         im = im.convert("RGB")
-        # Scale so width matches target while preserving aspect ratio.
-        new_h = max(1, round(im.height * (target_w / im.width)))
-        im = im.resize((target_w, new_h), Image.LANCZOS)
+        
+        # Scale to FILL the target dimensions (no empty space)
+        scale_w = target_w / im.width
+        scale_h = target_h / im.height
+        scale = max(scale_w, scale_h)  # Use the larger scale to fill completely
+        
+        new_w = max(1, round(im.width * scale))
+        new_h = max(1, round(im.height * scale))
+        im = im.resize((new_w, new_h), Image.LANCZOS)
 
-        if im.height == target_h:
-            out = im
-        elif im.height > target_h:
-            # Crop centered vertically.
-            top = (im.height - target_h) // 2
-            out = im.crop((0, top, target_w, top + target_h))
-        else:
-            # Pad with reflected + lightly blurred edges so the seam is not obvious.
-            out = Image.new("RGB", (target_w, target_h))
-            top_pad = (target_h - im.height) // 2
-            out.paste(im, (0, top_pad))
+        # Center crop to exact target size
+        left = (new_w - target_w) // 2
+        top = (new_h - target_h) // 2
+        out = im.crop((left, top, left + target_w, top + target_h))
 
-            # Top band: reflect first slice of original, blur.
-            top_band_h = top_pad
-            if top_band_h > 0:
-                slice_h = min(top_band_h, im.height)
-                top_slice = im.crop((0, 0, target_w, slice_h)).transpose(Image.FLIP_TOP_BOTTOM)
-                top_band = top_slice.resize((target_w, top_band_h), Image.LANCZOS)
-                top_band = top_band.filter(ImageFilter.GaussianBlur(radius=12))
-                out.paste(top_band, (0, 0))
-
-            # Bottom band.
-            bottom_band_h = target_h - (top_pad + im.height)
-            if bottom_band_h > 0:
-                slice_h = min(bottom_band_h, im.height)
-                bottom_slice = im.crop((0, im.height - slice_h, target_w, im.height)).transpose(
-                    Image.FLIP_TOP_BOTTOM
-                )
-                bottom_band = bottom_slice.resize((target_w, bottom_band_h), Image.LANCZOS)
-                bottom_band = bottom_band.filter(ImageFilter.GaussianBlur(radius=12))
-                out.paste(bottom_band, (0, top_pad + im.height))
+        buf = io.BytesIO()
+        out.save(buf, format="PNG", optimize=True)
+        return buf.getvalue()
 
         buf = io.BytesIO()
         out.save(buf, format="PNG", optimize=True)

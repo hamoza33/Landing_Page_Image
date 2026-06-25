@@ -1,0 +1,33 @@
+{
+  "project_type": "Python FastAPI backend with Jinja2 HTML templates, Arabic RTL",
+  "language": "Python 3.11+",
+  "build_system": "pip + Docker Compose",
+  "test_framework": "pytest with pytest-asyncio, fixtures in tests/conftest.py",
+  "build_command": "pip install -r requirements.txt && python -c \"from app.main import app; print('OK')\"",
+  "test_command": "python -m pytest -q",
+  "verification_instructions": "1. pip install -r requirements.txt 2. python -c 'from app.main import app; print(\"OK\")' 3. python -m pytest -q",
+  "snapshot_or_generated_files": null,
+  "setup_instructions": "pip install -r requirements.txt && pip install -r requirements-dev.txt",
+  "environment_constraints": "Network may be limited. Use import-check and pytest for verification.",
+  "contribution_requirements": "Type hints everywhere, pydantic v2, httpx async, no secrets in code, Arabic RTL templates",
+  "key_patterns": "Services in app/services/, templates in app/templates/, routes in app/main.py, config via Settings dataclass with dashboard overrides from settings_store.py, schemas in app/schemas.py",
+  "relevant_files": [
+    "app/main.py",
+    "app/templates/index.html",
+    "app/templates/login.html",
+    "app/templates/dashboard.html",
+    "app/templates/jobs.html",
+    "app/templates/job.html",
+    "app/services/image_gen.py",
+    "app/services/yunwu_client.py",
+    "app/pipeline.py",
+    "app/schemas.py",
+    "app/config.py",
+    "app/auth.py",
+    "app/settings_store.py",
+    "app/static/style.css",
+    "app/services/copy_writer.py",
+    "app/prompts/copy_system_ar.txt"
+  ],
+  "directory_structure": "app/ - FastAPI application (main.py, config.py, schemas.py, pipeline.py, auth.py, settings_store.py), app/services/ - business logic (yunwu_client.py, image_gen.py, analyzer.py, copy_writer.py, stitcher.py), app/templates/ - Jinja2 HTML templates, app/static/ - CSS, app/prompts/ - text prompt files, tests/ - pytest tests, scripts/ - deployment scripts"
+}
