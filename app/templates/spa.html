@@ -120,6 +120,7 @@
           <button class="tab" data-tab="prompts">النصوص والأوامر</button>
           <button class="tab" data-tab="ui">واجهة المستخدم</button>
           <button class="tab" data-tab="credentials">بيانات الدخول</button>
+          <button class="tab" data-tab="imageapis">مفاتيح توليد الصور</button>
         </div>
 
         <!-- API Settings Tab -->
@@ -259,6 +260,60 @@
           </div>
           <button class="primary save-btn" onclick="saveCredentials()">تحديث بيانات الدخول</button>
         </div>
+
+        <!-- Image APIs Tab -->
+        <div class="tab-panel" id="panel-imageapis">
+          <div class="settings-card">
+            <h3>مزود الصور الافتراضي</h3>
+            <div class="field">
+              <label for="default_provider">الخدمة الافتراضية لتوليد الصور</label>
+              <select id="default_provider">
+                <option value="yunwu">Yunwu</option>
+                <option value="duckcoding">DuckCoding</option>
+              </select>
+              <div class="hint">يتم تجربة مفاتيح الخدمة الافتراضية أولا، ثم الانتقال للخدمة البديلة عند الفشل</div>
+            </div>
+          </div>
+          <div class="settings-card">
+            <h3>مفاتيح Yunwu (يتم تجربتها بالترتيب)</h3>
+            <div class="field">
+              <label for="yunwu_base_url_img">عنوان Yunwu</label>
+              <input type="text" id="yunwu_base_url_img" value="" />
+            </div>
+            <div class="field">
+              <label for="yunwu_key_1">مفتاح Yunwu 1</label>
+              <input type="password" id="yunwu_key_1" value="" />
+            </div>
+            <div class="field">
+              <label for="yunwu_key_2">مفتاح Yunwu 2</label>
+              <input type="password" id="yunwu_key_2" value="" />
+            </div>
+            <div class="field">
+              <label for="yunwu_key_3">مفتاح Yunwu 3</label>
+              <input type="password" id="yunwu_key_3" value="" />
+            </div>
+          </div>
+          <div class="settings-card">
+            <h3>مفاتيح DuckCoding (بديل عند فشل Yunwu)</h3>
+            <div class="field">
+              <label for="duck_base_url">عنوان DuckCoding</label>
+              <input type="text" id="duck_base_url" value="" />
+            </div>
+            <div class="field">
+              <label for="duck_key_1">مفتاح DuckCoding 1</label>
+              <input type="password" id="duck_key_1" value="" />
+            </div>
+            <div class="field">
+              <label for="duck_key_2">مفتاح DuckCoding 2 (اختياري)</label>
+              <input type="password" id="duck_key_2" value="" />
+            </div>
+            <div class="field">
+              <label for="duck_key_3">مفتاح DuckCoding 3 (اختياري)</label>
+              <input type="password" id="duck_key_3" value="" />
+            </div>
+          </div>
+          <button class="primary save-btn" onclick="saveImageApis()">حفظ مفاتيح الصور</button>
+        </div>
         </div>
       </section>
     </main>
@@ -329,6 +384,20 @@
         // Credentials (username only)
         const auth = s.auth || {};
         if (auth.username) document.getElementById('new_username').value = auth.username;
+
+        // Image APIs
+        const imgApis = s.image_apis || {};
+        if (imgApis.default_provider) document.getElementById('default_provider').value = imgApis.default_provider;
+        document.getElementById('yunwu_base_url_img').value = imgApis.yunwu_base_url || 'https://yunwu.ai';
+        document.getElementById('duck_base_url').value = imgApis.duckcoding_base_url || 'https://api.duckcoding.ai';
+        const yk = imgApis.yunwu_keys || [];
+        if (yk[0]) document.getElementById('yunwu_key_1').value = yk[0];
+        if (yk[1]) document.getElementById('yunwu_key_2').value = yk[1];
+        if (yk[2]) document.getElementById('yunwu_key_3').value = yk[2];
+        const dk = imgApis.duckcoding_keys || [];
+        if (dk[0]) document.getElementById('duck_key_1').value = dk[0];
+        if (dk[1]) document.getElementById('duck_key_2').value = dk[1];
+        if (dk[2]) document.getElementById('duck_key_3').value = dk[2];
       } catch (e) {
         // Settings load failed silently - forms remain empty
       }
@@ -623,6 +692,26 @@
       postSettings('/admin/api/settings/credentials', {
         username: document.getElementById('new_username').value,
         password: newPass || null,
+      });
+    }
+
+    function saveImageApis() {
+      const yunwuKeys = [
+        document.getElementById('yunwu_key_1').value,
+        document.getElementById('yunwu_key_2').value,
+        document.getElementById('yunwu_key_3').value,
+      ].filter(k => k.trim());
+      const duckKeys = [
+        document.getElementById('duck_key_1').value,
+        document.getElementById('duck_key_2').value,
+        document.getElementById('duck_key_3').value,
+      ].filter(k => k.trim());
+      postSettings('/admin/api/settings/image_apis', {
+        default_provider: document.getElementById('default_provider').value,
+        yunwu_base_url: document.getElementById('yunwu_base_url_img').value || 'https://yunwu.ai',
+        yunwu_keys: yunwuKeys,
+        duckcoding_base_url: document.getElementById('duck_base_url').value || 'https://api.duckcoding.ai',
+        duckcoding_keys: duckKeys,
       });
     }
 

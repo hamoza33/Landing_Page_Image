@@ -462,34 +462,32 @@ class ImageGenerator:
         prompt: str,
         reference_images: list[bytes],
     ) -> bytes:
-        """Generate an image using image_edit with reference images.
+        """Generate an image using the multi-key ImageClient with retry/fallback.
 
-        Always uses image_edit since we always have at least one reference image.
-        Falls back to smaller size on 4xx errors.
+        Tries multiple API keys across providers (Yunwu then DuckCoding).
+        Falls back to smaller size if the ideal size fails.
         """
+        from app.services.image_client import ImageClient, ImageGenError
 
+        client = ImageClient()
         ideal = f"{self.settings.image_width}x{self.settings.section_height}"
         sizes_to_try = [ideal, FALLBACK_SIZE]
 
         last_err: Exception | None = None
         for size in sizes_to_try:
             try:
-                if reference_images:
-                    images = await self.client.image_edit(
-                        prompt=prompt,
-                        size=size,
-                        reference_images=reference_images,
-                    )
-                else:
-                    # Fallback for case with no references (should not happen normally)
-                    images = await self.client.image(prompt=prompt, size=size)
-                if images:
-                    return images[0]
-            except YunwuError as exc:
+                result = await client.generate_image(
+                    prompt=prompt,
+                    size=size,
+                    reference_images=reference_images if reference_images else None,
+                    model=self.settings.image_model,
+                )
+                return result
+            except ImageGenError as exc:
                 last_err = exc
-                log.warning("Image API failed at size=%s: %s", size, exc)
+                log.warning("Image generation failed at size=%s: %s", size, str(exc)[:200])
                 continue
-        raise YunwuError(f"All image sizes failed; last error: {last_err}")
+        raise YunwuError(f"All image sizes and API keys failed; last error: {last_err}")
 
 
 # --------------------------------------------------------------------- helpers
