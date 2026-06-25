@@ -1,0 +1,35 @@
+{
+  "id": "FEAT-003",
+  "type": "feat",
+  "description": "Improve layout, add advertiser_angle support, fix duplication in prompts, enhance Arabic text sharpness, improve product image handling for non-product sections, and add regenerate buttons to job view.",
+  "status": "in_progress",
+  "steps": [
+    "Fix spa.html layout to be a proper full-width centered website",
+    "Add optional advertiser_angle field to generate form in spa.html",
+    "Add advertiser_angle parameter to generate and generate-url endpoints in main.py",
+    "Pass advertiser_angle through pipeline to image generator",
+    "Add strong anti-duplication instructions in image_gen.py prompts",
+    "Improve product image handling for non-product sections (describe product concept)",
+    "Enhance Arabic text sharpness instructions in prompts",
+    "Add regenerate endpoint in main.py for individual sections",
+    "Add regenerate buttons with prompt editing to job.html"
+  ],
+  "acceptance_criteria": [
+    "Layout looks like a proper website with centered content",
+    "Advertiser angle field is optional in generate form",
+    "Advertiser angle is incorporated into prompts when provided",
+    "Prompts contain strong anti-duplication instructions",
+    "Non-product sections describe product concept instead of using random product image",
+    "Arabic text instructions emphasize sharpness and clarity",
+    "Regenerate buttons appear next to each section image in job view",
+    "python -c 'from app.main import app; print(\"OK\")' succeeds",
+    "python -m pytest -q passes"
+  ],
+  "verification": [
+    "pip install -r requirements.txt",
+    "python -c \"from app.main import app; print('OK')\"",
+    "python -m pytest -q"
+  ],
+  "blocked_reason": null,
+  "findings": null
+}

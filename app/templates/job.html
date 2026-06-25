@@ -3,13 +3,114 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>صفحة الهبوط — {{ job.id }}</title>
+  <title>صفحة الهبوط - {{ job.id }}</title>
   <link rel="stylesheet" href="/static/style.css" />
+  <style>
+    .section-card {
+      background: var(--card);
+      border-radius: 14px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+      padding: 16px;
+      margin-bottom: 20px;
+    }
+    .section-card img {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid #eee;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    .section-header h3 {
+      margin: 0;
+      font-size: 1rem;
+      color: var(--accent-strong);
+    }
+    .section-actions {
+      display: flex;
+      gap: 8px;
+    }
+    .btn-regen {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-regen:hover {
+      background: var(--accent-strong);
+    }
+    .btn-edit-prompt {
+      background: transparent;
+      border: 1px solid var(--accent);
+      color: var(--accent-strong);
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-edit-prompt:hover {
+      background: #fff7e6;
+    }
+    .prompt-editor {
+      display: none;
+      margin-top: 12px;
+      padding: 12px;
+      background: var(--bg);
+      border-radius: 8px;
+    }
+    .prompt-editor.visible {
+      display: block;
+    }
+    .prompt-editor textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-family: inherit;
+      direction: ltr;
+      resize: vertical;
+    }
+    .prompt-editor .editor-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      justify-content: flex-start;
+    }
+    .regen-status {
+      margin-top: 8px;
+      font-size: 0.8rem;
+      color: var(--muted);
+      display: none;
+    }
+    .regen-status.visible {
+      display: block;
+    }
+    .regen-status.error {
+      color: var(--error);
+    }
+    .sections-list {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+      max-width: 600px;
+      margin: 0 auto;
+    }
+  </style>
 </head>
 <body>
   <main class="container">
-    <h1>نتيجة الوظيفة</h1>
-    <p class="meta">المعرف: <code>{{ job.id }}</code> — الحالة: <strong>{{ job.status }}</strong> — الخطوة: {{ job.step }}</p>
+    <h1>نتيجة المشروع</h1>
+    <p class="meta">المعرف: <code>{{ job.id }}</code> | الحالة: <strong>{{ job.status }}</strong> | الخطوة: {{ job.step }}</p>
     {% if job.error %}
       <p class="error">خطأ: {{ job.error }}</p>
     {% endif %}
@@ -17,29 +118,116 @@
     {% if long_image_url %}
       <h2>الصورة الطويلة</h2>
       <p>
-        <a href="{{ long_image_url }}" download>تنزيل PNG الكامل</a>
+        <a href="{{ long_image_url }}" download class="link">تنزيل PNG الكامل</a>
       </p>
       <img class="long-image" src="{{ long_image_url }}" alt="Landing page" />
     {% endif %}
 
     {% if section_urls %}
       <h2>الأقسام الثمانية</h2>
-      <div class="sections-grid">
+      <div class="sections-list">
         {% for url in section_urls %}
-          <a href="{{ url }}" target="_blank" rel="noopener">
-            <img src="{{ url }}" alt="Section" />
-          </a>
+          {% set key = section_keys[loop.index0] if section_keys|length > loop.index0 else '' %}
+          <div class="section-card" id="section-card-{{ key }}">
+            <div class="section-header">
+              <h3>{{ loop.index }}. {{ key }}</h3>
+              <div class="section-actions">
+                <button class="btn-edit-prompt" onclick="togglePromptEditor('{{ key }}')">تعديل الأمر</button>
+                <button class="btn-regen" onclick="regenerateSection('{{ key }}')">إعادة توليد</button>
+              </div>
+            </div>
+            <img src="{{ url }}" alt="Section {{ key }}" id="img-{{ key }}" />
+            <div class="prompt-editor" id="prompt-editor-{{ key }}">
+              <textarea id="prompt-text-{{ key }}">{{ prompts.get(key, '') if prompts else '' }}</textarea>
+              <div class="editor-actions">
+                <button class="btn-regen" onclick="regenerateWithPrompt('{{ key }}')">توليد بالأمر المعدل</button>
+                <button class="btn-edit-prompt" onclick="togglePromptEditor('{{ key }}')">إلغاء</button>
+              </div>
+            </div>
+            <div class="regen-status" id="status-{{ key }}"></div>
+          </div>
         {% endfor %}
       </div>
     {% endif %}
 
     <h2>الملفات</h2>
     <ul class="files">
-      {% if copy_url %}<li><a href="{{ copy_url }}" target="_blank">copy.json</a></li>{% endif %}
-      {% if brief_url %}<li><a href="{{ brief_url }}" target="_blank">brief.json</a></li>{% endif %}
+      {% if copy_url %}<li><a href="{{ copy_url }}" target="_blank" class="link">copy.json</a></li>{% endif %}
+      {% if brief_url %}<li><a href="{{ brief_url }}" target="_blank" class="link">brief.json</a></li>{% endif %}
     </ul>
 
-    <p><a class="link" href="/">↺ توليد جديد</a></p>
+    <p><a class="link" href="/">العودة للرئيسية</a></p>
   </main>
+
+  <script>
+    function togglePromptEditor(key) {
+      const editor = document.getElementById('prompt-editor-' + key);
+      editor.classList.toggle('visible');
+    }
+
+    async function regenerateSection(key) {
+      const statusEl = document.getElementById('status-' + key);
+      statusEl.textContent = 'جارٍ إعادة التوليد...';
+      statusEl.className = 'regen-status visible';
+
+      try {
+        const res = await fetch('/jobs/{{ job.id }}/regenerate/' + key, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({})
+        });
+        const data = await res.json();
+        if (data.success) {
+          const img = document.getElementById('img-' + key);
+          img.src = data.section_url + '?t=' + Date.now();
+          statusEl.textContent = 'تم إعادة التوليد بنجاح';
+          statusEl.className = 'regen-status visible';
+          // Update prompt textarea
+          const textarea = document.getElementById('prompt-text-' + key);
+          if (textarea && data.prompt) textarea.value = data.prompt;
+        } else {
+          statusEl.textContent = 'فشل: ' + (data.detail || 'خطأ غير معروف');
+          statusEl.className = 'regen-status visible error';
+        }
+      } catch (e) {
+        statusEl.textContent = 'خطأ في الاتصال';
+        statusEl.className = 'regen-status visible error';
+      }
+    }
+
+    async function regenerateWithPrompt(key) {
+      const textarea = document.getElementById('prompt-text-' + key);
+      const prompt = textarea.value.trim();
+      const statusEl = document.getElementById('status-' + key);
+      statusEl.textContent = 'جارٍ إعادة التوليد بالأمر المعدل...';
+      statusEl.className = 'regen-status visible';
+
+      try {
+        const res = await fetch('/jobs/{{ job.id }}/regenerate/' + key, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: prompt })
+        });
+        const data = await res.json();
+        if (data.success) {
+          const img = document.getElementById('img-' + key);
+          img.src = data.section_url + '?t=' + Date.now();
+          statusEl.textContent = 'تم إعادة التوليد بنجاح';
+          statusEl.className = 'regen-status visible';
+          // Hide the editor
+          const editor = document.getElementById('prompt-editor-' + key);
+          editor.classList.remove('visible');
+          // Update prompt
+          if (data.prompt) textarea.value = data.prompt;
+        } else {
+          statusEl.textContent = 'فشل: ' + (data.detail || 'خطأ غير معروف');
+          statusEl.className = 'regen-status visible error';
+        }
+      } catch (e) {
+        statusEl.textContent = 'خطأ في الاتصال';
+        statusEl.className = 'regen-status visible error';
+      }
+    }
+  </script>
 </body>
 </html>
