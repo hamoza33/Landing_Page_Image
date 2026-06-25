@@ -29,25 +29,29 @@
 
   <!-- Main App (shown after login) -->
   <div id="app-section" class="app-wrapper" style="display:none;">
-    <!-- Top Navigation Bar -->
-    <header class="top-nav">
-      <div class="top-nav-inner">
-        <div class="top-nav-brand">
-          <h1 class="brand-title">مولّد صفحات الهبوط</h1>
-        </div>
-        <nav class="top-nav-links">
-          <button class="nav-link active" data-section="generate">إنشاء</button>
-          <button class="nav-link" data-section="jobs">المشاريع</button>
-          <button class="nav-link" data-section="settings">الإعدادات</button>
-        </nav>
-        <div class="top-nav-actions">
-          <button id="logout-btn" class="btn-logout-top">خروج</button>
-        </div>
+    <!-- Right Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-brand">
+        <h2>مولّد الصفحات</h2>
       </div>
-    </header>
+      <nav class="sidebar-nav">
+        <button class="sidebar-link active" data-section="generate">
+          <span class="sidebar-icon">+</span> إنشاء جديد
+        </button>
+        <button class="sidebar-link" data-section="jobs">
+          <span class="sidebar-icon">&#9776;</span> سجل المشاريع
+        </button>
+        <button class="sidebar-link" data-section="settings">
+          <span class="sidebar-icon">&#9881;</span> الإعدادات
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <button id="logout-btn" class="btn-logout-sidebar">تسجيل الخروج</button>
+      </div>
+    </aside>
 
-    <!-- Main Content -->
-    <main class="main-content">
+    <!-- Main Content Area -->
+    <main class="main-panel">
       <!-- Generate Section -->
       <section id="section-generate" class="content-section active">
         <div class="section-container">
@@ -278,7 +282,7 @@
         const data = await res.json();
         if (data.authenticated) {
           document.getElementById('login-section').style.display = 'none';
-          document.getElementById('app-section').style.display = 'block';
+          document.getElementById('app-section').style.display = 'flex';
           loadSettings();
           loadJobs();
         } else {
@@ -371,9 +375,9 @@
     });
 
     // ─── Navigation ───
-    document.querySelectorAll('.nav-link').forEach(btn => {
+    document.querySelectorAll('.sidebar-link').forEach(btn => {
       btn.addEventListener('click', () => {
-        document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.sidebar-link').forEach(b => b.classList.remove('active'));
         document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
         btn.classList.add('active');
         document.getElementById('section-' + btn.dataset.section).classList.add('active');
