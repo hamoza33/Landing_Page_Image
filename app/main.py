@@ -26,7 +26,7 @@ from app.auth import (
 )
 from app.config import settings
 from app.pipeline import Pipeline
-from app.schemas import JobRecord
+from app.schemas import JobRecord, SECTION_KEYS as SECTION_KEYS_IMPORT
 from app.settings_store import (
     change_credentials,
     get_setting,
@@ -121,6 +121,7 @@ async def generate(
     request: Request,
     image: UploadFile,
     background_tasks: BackgroundTasks,
+    advertiser_angle: str | None = Form(None),
 ) -> JSONResponse:
     if not image.content_type or not image.content_type.startswith("image/"):
         raise HTTPException(status_code=400, detail="Uploaded file must be an image.")
@@ -133,11 +134,11 @@ async def generate(
     upload_path = settings.upload_dir / f"{job_id}_{image.filename or 'upload'}"
     upload_path.write_bytes(raw)
 
-    record = JobRecord(id=job_id, status="pending", step="queued")
+    record = JobRecord(id=job_id, status="pending", step="queued", advertiser_angle=advertiser_angle)
     async with _JOBS_LOCK:
         _JOBS[job_id] = record
 
-    background_tasks.add_task(_run_job, job_id, raw, image.content_type)
+    background_tasks.add_task(_run_job, job_id, raw, image.content_type, advertiser_angle)
 
     return JSONResponse(
         {
@@ -159,6 +160,8 @@ async def generate_from_url(
     if not image_url:
         raise HTTPException(status_code=400, detail="image_url is required.")
 
+    advertiser_angle = body.get("advertiser_angle", "").strip() or None
+
     # Download the image
     try:
         async with httpx.AsyncClient(timeout=30.0, follow_redirects=True) as client:
@@ -179,11 +182,11 @@ async def generate_from_url(
     upload_path = settings.upload_dir / f"{job_id}_url_download"
     upload_path.write_bytes(raw)
 
-    record = JobRecord(id=job_id, status="pending", step="queued")
+    record = JobRecord(id=job_id, status="pending", step="queued", advertiser_angle=advertiser_angle)
     async with _JOBS_LOCK:
         _JOBS[job_id] = record
 
-    background_tasks.add_task(_run_job, job_id, raw, content_type)
+    background_tasks.add_task(_run_job, job_id, raw, content_type, advertiser_angle)
 
     return JSONResponse(
         {
@@ -194,14 +197,14 @@ async def generate_from_url(
     )
 
 
-async def _run_job(job_id: str, image_bytes: bytes, mime: str) -> None:
+async def _run_job(job_id: str, image_bytes: bytes, mime: str, advertiser_angle: str | None = None) -> None:
     record = _JOBS.get(job_id)
     if record is None:
         return
     # Pipeline uses live settings (reads from dashboard JSON)
     pipeline = Pipeline()
     try:
-        await pipeline.run(job=record, image_bytes=image_bytes, mime=mime)
+        await pipeline.run(job=record, image_bytes=image_bytes, mime=mime, advertiser_angle=advertiser_angle)
     except Exception as exc:  # noqa: BLE001 — surface any failure to the user
         log.exception("Job %s failed", job_id)
         record.status = "error"
@@ -218,6 +221,7 @@ async def job_status(job_id: str) -> JSONResponse:
     payload["section_urls"] = [_file_url(p) for p in record.sections]
     payload["copy_url"] = _file_url(record.copy_path)
     payload["brief_url"] = _file_url(record.brief_path)
+    payload["prompts"] = record.prompts
     return JSONResponse(payload)
 
 
@@ -226,6 +230,7 @@ async def job_view(request: Request, job_id: str) -> HTMLResponse:
     record = _JOBS.get(job_id)
     if record is None:
         raise HTTPException(status_code=404, detail="Unknown job")
+    section_keys = list(SECTION_KEYS_IMPORT)
     return templates.TemplateResponse(
         request,
         "job.html",
@@ -235,8 +240,95 @@ async def job_view(request: Request, job_id: str) -> HTMLResponse:
             "section_urls": [_file_url(p) for p in record.sections],
             "copy_url": _file_url(record.copy_path),
             "brief_url": _file_url(record.brief_path),
+            "section_keys": section_keys,
+            "prompts": record.prompts,
         },
     )
+
+
+@app.post("/jobs/{job_id}/regenerate/{section_key}")
+async def regenerate_section(request: Request, job_id: str, section_key: str) -> JSONResponse:
+    """Regenerate a single section image, optionally with a custom prompt."""
+    record = _JOBS.get(job_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Unknown job")
+    if record.status != "done":
+        raise HTTPException(status_code=400, detail="Job must be completed before regenerating sections")
+    if section_key not in SECTION_KEYS_IMPORT:
+        raise HTTPException(status_code=400, detail=f"Invalid section key: {section_key}")
+
+    body = await request.json()
+    custom_prompt = body.get("prompt", "").strip() or None
+
+    # Load the product image and brief/copy from job directory
+    job_dir = settings.output_dir / job_id
+    product_path = job_dir / "product_upload.bin"
+    brief_path = job_dir / "brief.json"
+    copy_path = job_dir / "copy.json"
+
+    if not brief_path.exists() or not copy_path.exists():
+        raise HTTPException(status_code=400, detail="Job artifacts not found for regeneration")
+
+    import json as json_mod
+    from app.schemas import ProductBrief, LandingCopy
+    from app.services.image_gen import ImageGenerator, PRODUCT_REF_SECTIONS
+    from app.pipeline import SECTION_FILENAMES
+    from app.config import Settings
+
+    brief = ProductBrief.model_validate_json(brief_path.read_text(encoding="utf-8"))
+    copy = LandingCopy.model_validate_json(copy_path.read_text(encoding="utf-8"))
+
+    product_image: bytes | None = None
+    if product_path.exists():
+        product_image = product_path.read_bytes()
+
+    # Get previous section image for continuity
+    section_idx = list(SECTION_KEYS_IMPORT).index(section_key)
+    prev_section_image: bytes | None = None
+    if section_idx > 0 and len(record.sections) > section_idx - 1:
+        prev_path = Path(record.sections[section_idx - 1])
+        if prev_path.exists():
+            prev_section_image = prev_path.read_bytes()
+
+    live_settings = Settings.load_live()
+    from app.services.yunwu_client import YunwuClient
+    client = YunwuClient(live_settings)
+    gen = ImageGenerator(client=client, settings=live_settings)
+
+    result = await gen.regenerate_section(
+        brief, copy,
+        section_key=section_key,
+        custom_prompt=custom_prompt,
+        product_image=product_image,
+        prev_section_image=prev_section_image,
+        advertiser_angle=record.advertiser_angle,
+    )
+
+    # Save the new section image
+    fname = SECTION_FILENAMES.get(section_key, f"section_{section_idx + 1}_{section_key}.png")
+    path = job_dir / fname
+    path.write_bytes(result.image_bytes)
+
+    # Update the job record
+    if section_idx < len(record.sections):
+        record.sections[section_idx] = str(path)
+
+    # Update stored prompt
+    record.prompts[section_key] = result.prompt
+
+    # Update prompts.json
+    prompts_path = job_dir / "prompts.json"
+    prompts_path.write_text(
+        json_mod.dumps(record.prompts, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
+
+    return JSONResponse({
+        "success": True,
+        "section_key": section_key,
+        "section_url": _file_url(str(path)),
+        "prompt": result.prompt,
+    })
 
 
 # ─────────────────────────────────────────────────────────── Jobs History

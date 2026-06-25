@@ -6,6 +6,7 @@
   --accent-strong: #9a6f33;
   --card: #ffffff;
   --error: #b91c1c;
+  --border: #e5e7eb;
 }
 
 * { box-sizing: border-box; }
@@ -19,6 +20,7 @@ body {
   line-height: 1.6;
 }
 
+/* ─── Container (for job view page) ─── */
 .container {
   max-width: 920px;
   margin: 0 auto;
@@ -42,7 +44,7 @@ h2 {
 
 .card {
   background: var(--card);
-  padding: 24px;
+  padding: 28px;
   border-radius: 14px;
   box-shadow: 0 6px 20px rgba(0,0,0,0.05);
   display: grid;
@@ -114,92 +116,110 @@ button.primary:hover { background: var(--accent-strong); }
 .files { list-style: none; padding: 0; }
 .files li { padding: 6px 0; }
 
-/* ─── SPA Layout ─── */
-.spa-layout {
-  display: flex;
+/* ─── Top Navigation Layout ─── */
+.app-wrapper {
   min-height: 100vh;
 }
 
-.spa-sidebar {
-  width: 240px;
+.top-nav {
   background: var(--card);
-  border-left: 1px solid #e5e7eb;
-  display: flex;
-  flex-direction: column;
-  position: fixed;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  position: sticky;
   top: 0;
-  right: 0;
-  height: 100vh;
   z-index: 100;
-  box-shadow: -2px 0 12px rgba(0,0,0,0.04);
 }
 
-.spa-sidebar-header {
-  padding: 20px;
-  border-bottom: 1px solid #e5e7eb;
+.top-nav-inner {
+  max-width: 1100px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 64px;
 }
 
-.spa-sidebar-header h2 {
-  margin: 0;
+.brand-title {
   font-size: 1.1rem;
+  margin: 0;
   color: var(--accent-strong);
-  border: none;
-  padding: 0;
-  display: block;
-}
-
-.spa-nav {
-  flex: 1;
-  padding: 12px 0;
-}
-
-.spa-nav-item {
-  display: block;
-  width: 100%;
-  padding: 12px 20px;
-  border: none;
-  background: transparent;
-  text-align: right;
-  font-size: 0.95rem;
-  font-weight: 500;
-  color: var(--ink);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.spa-nav-item:hover {
-  background: #fff7e6;
-  color: var(--accent-strong);
-}
-
-.spa-nav-item.active {
-  background: #fff7e6;
-  color: var(--accent-strong);
-  border-right: 3px solid var(--accent);
   font-weight: 700;
 }
 
-.spa-sidebar-footer {
-  padding: 16px 20px;
-  border-top: 1px solid #e5e7eb;
+.top-nav-links {
+  display: flex;
+  gap: 4px;
 }
 
-.spa-main {
-  flex: 1;
-  margin-right: 240px;
-  padding: 32px 40px 80px;
-  max-width: 900px;
+.nav-link {
+  padding: 8px 20px;
+  border: none;
+  background: transparent;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.2s;
 }
 
-.spa-section {
+.nav-link:hover {
+  background: #fff7e6;
+  color: var(--accent-strong);
+}
+
+.nav-link.active {
+  background: #fff7e6;
+  color: var(--accent-strong);
+}
+
+.btn-logout-top {
+  background: transparent;
+  border: 1px solid var(--error);
+  color: var(--error);
+  padding: 6px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 0.85rem;
+}
+
+.btn-logout-top:hover {
+  background: #fef2f2;
+}
+
+/* ─── Main Content Area ─── */
+.main-content {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 24px 80px;
+}
+
+.content-section {
   display: none;
 }
 
-.spa-section.active {
+.content-section.active {
   display: block;
 }
 
-/* ─── Login Styles (SPA) ─── */
+.section-container {
+  width: 100%;
+}
+
+.page-header {
+  margin-bottom: 28px;
+}
+
+.page-header h2 {
+  margin: 0 0 8px;
+  font-size: 1.6rem;
+  color: var(--accent-strong);
+  border: none;
+  display: block;
+}
+
+/* ─── Login Styles ─── */
 .login-wrapper {
   min-height: 100vh;
   display: flex;
@@ -271,11 +291,38 @@ button.primary:hover { background: var(--accent-strong); }
   text-align: center;
 }
 
-/* ─── Settings Styles (SPA) ─── */
+/* ─── Generate Section Styles ─── */
+.generate-card {
+  max-width: 100%;
+}
+
+.generate-btn {
+  margin-top: 16px;
+  width: 100%;
+  padding: 14px;
+  font-size: 1.05rem;
+}
+
+.view-result-link {
+  display: inline-block;
+  margin-top: 12px;
+  padding: 10px 20px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 8px;
+  text-decoration: none;
+}
+
+.view-result-link:hover {
+  background: var(--accent-strong);
+  text-decoration: none;
+}
+
+/* ─── Settings Styles ─── */
 .tabs {
   display: flex;
   gap: 0;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--border);
   margin-bottom: 24px;
   overflow-x: auto;
 }
@@ -459,7 +506,7 @@ button.primary:hover { background: var(--accent-strong); }
   opacity: 1;
 }
 
-/* ─── Jobs Table (SPA) ─── */
+/* ─── Jobs Table ─── */
 .jobs-table {
   width: 100%;
   border-collapse: collapse;
@@ -476,7 +523,7 @@ button.primary:hover { background: var(--accent-strong); }
   font-weight: 600;
   font-size: 0.85rem;
   color: var(--muted);
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--border);
 }
 
 .jobs-table td {
@@ -574,7 +621,7 @@ button.primary:hover { background: var(--accent-strong); }
   display: flex;
   gap: 0;
   margin-bottom: 16px;
-  border-bottom: 2px solid #e5e7eb;
+  border-bottom: 2px solid var(--border);
 }
 
 .input-method-tab {
@@ -658,7 +705,7 @@ button.primary:hover { background: var(--accent-strong); }
   display: none;
 }
 
-/* ─── Logout Button ─── */
+/* ─── Logout Button (legacy) ─── */
 .btn-logout {
   background: transparent;
   border: 1px solid var(--error);
@@ -676,48 +723,34 @@ button.primary:hover { background: var(--accent-strong); }
 
 /* ─── Responsive ─── */
 @media (max-width: 768px) {
-  .spa-sidebar {
-    width: 200px;
-  }
-  .spa-main {
-    margin-right: 200px;
-    padding: 20px 16px 60px;
+  .main-content {
+    padding: 24px 16px 60px;
   }
   .two-col {
     grid-template-columns: 1fr;
   }
+  .top-nav-inner {
+    padding: 0 12px;
+  }
+  .nav-link {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+  .brand-title {
+    font-size: 0.95rem;
+  }
 }
 
-@media (max-width: 640px) {
-  .spa-layout {
-    flex-direction: column;
-  }
-  .spa-sidebar {
-    position: relative;
-    width: 100%;
+@media (max-width: 480px) {
+  .top-nav-inner {
+    flex-wrap: wrap;
     height: auto;
-    border-left: none;
-    border-bottom: 1px solid #e5e7eb;
+    padding: 12px;
+    gap: 8px;
   }
-  .spa-nav {
-    display: flex;
-    overflow-x: auto;
-    padding: 0;
-  }
-  .spa-nav-item {
-    white-space: nowrap;
-    border-right: none;
-    border-bottom: 3px solid transparent;
-  }
-  .spa-nav-item.active {
-    border-right: none;
-    border-bottom-color: var(--accent);
-  }
-  .spa-main {
-    margin-right: 0;
-    padding: 20px 16px 60px;
-  }
-  .spa-sidebar-footer {
-    display: none;
+  .top-nav-links {
+    order: 3;
+    width: 100%;
+    justify-content: center;
   }
 }

@@ -1,6 +1,6 @@
 """High-level pipeline orchestrator.
 
-Coordinates analyzer → copy writer → image generator → stitcher and writes
+Coordinates analyzer -> copy writer -> image generator -> stitcher and writes
 artifacts under ``settings.output_dir / <job_id>/``.
 """
 
@@ -51,6 +51,7 @@ class Pipeline:
         job: JobRecord,
         image_bytes: bytes,
         mime: str,
+        advertiser_angle: str | None = None,
         progress: callable | None = None,
     ) -> JobRecord:
         job_dir = self.settings.output_dir / job.id
@@ -78,7 +79,8 @@ class Pipeline:
 
         await _progress("generating section 1 of 8: hero")
         sections = await self.image_gen.generate_all(
-            brief, copy, product_image=image_bytes, progress=_progress
+            brief, copy, product_image=image_bytes,
+            advertiser_angle=advertiser_angle, progress=_progress,
         )
         section_paths: list[str] = []
         for sec in sections:
@@ -94,16 +96,18 @@ class Pipeline:
         self.stitcher.stitch([s.image_bytes for s in ordered], output_path=long_path)
         job.long_image = str(long_path)
 
-        # Bundle prompts for debugging.
+        # Bundle prompts for debugging and regeneration.
+        prompts_dict = {s.key: s.prompt for s in ordered}
         prompts_path = job_dir / "prompts.json"
         prompts_path.write_text(
-            json.dumps(
-                {s.key: s.prompt for s in ordered},
-                ensure_ascii=False,
-                indent=2,
-            ),
+            json.dumps(prompts_dict, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
+        job.prompts = prompts_dict
+
+        # Save the product image for regeneration
+        product_path = job_dir / "product_upload.bin"
+        product_path.write_bytes(image_bytes)
 
         job.status = "done"
         job.step = "complete"

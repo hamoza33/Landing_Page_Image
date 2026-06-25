@@ -118,3 +118,5 @@ class JobRecord(BaseModel):
     sections: list[str] = Field(default_factory=list)
     copy_path: str | None = None
     brief_path: str | None = None
+    advertiser_angle: str | None = None
+    prompts: dict[str, str] = Field(default_factory=dict)
