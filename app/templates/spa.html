@@ -183,6 +183,11 @@
               </div>
             </div>
             <div class="field">
+              <label for="hero_height">ارتفاع الهيرو (بكسل)</label>
+              <input type="number" id="hero_height" value="" min="512" max="4096" step="64" />
+              <div class="hint">الهيرو بنسبة 1:2 (مثلا 2048 لعرض 1024)</div>
+            </div>
+            <div class="field">
               <label for="image_concurrency">التزامن (عدد الصور المتوازية)</label>
               <input type="number" id="image_concurrency" value="" min="1" max="10" />
               <div class="hint">عدد الصور التي تولد في نفس الوقت</div>
@@ -374,6 +379,7 @@
         const img = s.image || {};
         if (img.image_width) document.getElementById('image_width').value = img.image_width;
         if (img.section_height) document.getElementById('section_height').value = img.section_height;
+        if (img.hero_height) document.getElementById('hero_height').value = img.hero_height;
         if (img.image_concurrency) document.getElementById('image_concurrency').value = img.image_concurrency;
 
         // Prompts
@@ -663,6 +669,7 @@
       postSettings('/admin/api/settings/image', {
         image_width: parseInt(document.getElementById('image_width').value),
         section_height: parseInt(document.getElementById('section_height').value),
+        hero_height: parseInt(document.getElementById('hero_height').value),
         image_concurrency: parseInt(document.getElementById('image_concurrency').value),
       });
     }

@@ -111,11 +111,14 @@ class ImageGenerator:
             img_bytes = await self._call_image_api(
                 prompt=prompt,
                 reference_images=reference_images,
+                section_key=key,
             )
+            # Hero gets its own height (1:2 ratio), other sections use section_height (1:3)
+            target_h = self.settings.hero_height if key == "hero" else self.settings.section_height
             normalized = _normalize_to_size(
                 img_bytes,
                 target_w=self.settings.image_width,
-                target_h=self.settings.section_height,
+                target_h=target_h,
             )
 
             # Crop bottom of this section for the next section's continuity reference
@@ -175,11 +178,13 @@ class ImageGenerator:
         img_bytes = await self._call_image_api(
             prompt=prompt,
             reference_images=reference_images,
+            section_key=section_key,
         )
+        target_h = self.settings.hero_height if section_key == "hero" else self.settings.section_height
         normalized = _normalize_to_size(
             img_bytes,
             target_w=self.settings.image_width,
-            target_h=self.settings.section_height,
+            target_h=target_h,
         )
 
         return GeneratedSection(
@@ -385,6 +390,12 @@ class ImageGenerator:
                     f"that builds on the same idea but says it differently."
                 )
 
+        # Aspect ratio instruction based on section
+        if key == "hero":
+            aspect_instruction = "Tall portrait orientation, 1:2 aspect ratio."
+        else:
+            aspect_instruction = "Tall portrait orientation, 1:3 aspect ratio."
+
         return (
             f"{style}\n\n"
             f"{scene}\n\n"
@@ -392,7 +403,7 @@ class ImageGenerator:
             f"{anti_duplication}\n\n"
             f"{arabic_instructions}"
             f"{angle_text}\n\n"
-            f"Tall portrait orientation, 1:3 aspect ratio. "
+            f"{aspect_instruction} "
             f"Style seed reference: {seed}-{key}."
         )
 
@@ -461,6 +472,7 @@ class ImageGenerator:
         *,
         prompt: str,
         reference_images: list[bytes],
+        section_key: str = "",
     ) -> bytes:
         """Generate an image using the multi-key ImageClient with retry/fallback.
 
@@ -470,8 +482,14 @@ class ImageGenerator:
         from app.services.image_client import ImageClient, ImageGenError
 
         client = ImageClient()
-        ideal = f"{self.settings.image_width}x{self.settings.section_height}"
-        sizes_to_try = [ideal, FALLBACK_SIZE]
+        # Hero uses 1:2 ratio, others use 1:3
+        if section_key == "hero":
+            target_h = self.settings.hero_height
+        else:
+            target_h = self.settings.section_height
+        ideal = f"{self.settings.image_width}x{target_h}"
+        fallback = f"{self.settings.image_width}x{min(target_h, 1536)}"
+        sizes_to_try = [ideal, fallback]
 
         last_err: Exception | None = None
         for size in sizes_to_try:

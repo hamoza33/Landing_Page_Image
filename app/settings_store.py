@@ -53,6 +53,7 @@ def _default_settings() -> dict[str, Any]:
         "image": {
             "image_width": 1024,
             "section_height": 3072,
+            "hero_height": 2048,
             "image_concurrency": 3,
         },
         "app": {
