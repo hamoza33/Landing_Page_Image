@@ -50,6 +50,43 @@ app.mount("/files", StaticFiles(directory=str(settings.output_dir)), name="files
 _JOBS: dict[str, JobRecord] = {}
 _JOBS_LOCK = asyncio.Lock()
 
+# ─── Job Persistence ───
+_JOBS_FILE = settings.output_dir / "_jobs_index.json"
+
+
+def _load_persisted_jobs() -> None:
+    """Load jobs from disk on startup to preserve history across restarts."""
+    if not _JOBS_FILE.exists():
+        return
+    try:
+        import json
+        data = json.loads(_JOBS_FILE.read_text(encoding="utf-8"))
+        for item in data:
+            try:
+                record = JobRecord(**item)
+                # Only load completed/errored jobs (not stale running ones)
+                if record.status in ("done", "error"):
+                    _JOBS[record.id] = record
+            except Exception:
+                continue
+        log.info("Loaded %d persisted jobs from disk", len(_JOBS))
+    except Exception as exc:
+        log.warning("Failed to load persisted jobs: %s", exc)
+
+
+def _persist_jobs() -> None:
+    """Save all jobs to disk for persistence across restarts."""
+    import json
+    try:
+        data = [job.model_dump() for job in _JOBS.values()]
+        _JOBS_FILE.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    except Exception as exc:
+        log.warning("Failed to persist jobs: %s", exc)
+
+
+# Load existing jobs on startup
+_load_persisted_jobs()
+
 # Step progress mapping
 STEP_PROGRESS = {
     "queued": 5,
@@ -209,6 +246,8 @@ async def _run_job(job_id: str, image_bytes: bytes, mime: str, advertiser_angle:
         log.exception("Job %s failed", job_id)
         record.status = "error"
         record.error = f"{type(exc).__name__}: {exc}"
+    finally:
+        _persist_jobs()
 
 
 @app.get("/jobs/{job_id}", name="job_status")

@@ -25,10 +25,10 @@ SECTION_FILENAMES = {
     "hero": "section_1_hero.png",
     "features": "section_2_features.png",
     "before_after": "section_3_before_after.png",
-    "testimonials": "section_4_testimonials.png",
-    "faq": "section_5_faq.png",
-    "lifestyle": "section_6_lifestyle.png",
-    "education": "section_7_education.png",
+    "education": "section_4_education.png",
+    "lifestyle": "section_5_lifestyle.png",
+    "testimonials": "section_6_testimonials.png",
+    "faq": "section_7_faq.png",
     "closing": "section_8_closing.png",
 }
 

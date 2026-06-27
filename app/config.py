@@ -51,6 +51,7 @@ class Settings:
 
     image_width: int
     section_height: int
+    hero_height: int
     image_concurrency: int
 
     @classmethod
@@ -74,6 +75,7 @@ class Settings:
             upload_dir=upload_dir,
             image_width=_env_int("IMAGE_WIDTH", 1024),
             section_height=_env_int("SECTION_HEIGHT", 3072),
+            hero_height=_env_int("HERO_HEIGHT", 2048),
             image_concurrency=_env_int("IMAGE_CONCURRENCY", 3),
         )
 
@@ -114,6 +116,7 @@ class Settings:
             upload_dir=upload_dir,
             image_width=int(image.get("image_width") or _env_int("IMAGE_WIDTH", 1024)),
             section_height=int(image.get("section_height") or _env_int("SECTION_HEIGHT", 3072)),
+            hero_height=int(image.get("hero_height") or _env_int("HERO_HEIGHT", 2048)),
             image_concurrency=int(image.get("image_concurrency") or _env_int("IMAGE_CONCURRENCY", 3)),
         )
 

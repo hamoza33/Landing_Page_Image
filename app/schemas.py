@@ -11,10 +11,10 @@ SECTION_KEYS: tuple[str, ...] = (
     "hero",
     "features",
     "before_after",
+    "education",
+    "lifestyle",
     "testimonials",
     "faq",
-    "lifestyle",
-    "education",
     "closing",
 )
 
